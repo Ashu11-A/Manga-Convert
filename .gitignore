@@ -1,0 +1,5 @@
+node_modules
+dados
+models
+build/config.gypi
+prediction.png

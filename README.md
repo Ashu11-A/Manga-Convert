@@ -1,2 +1,6 @@
 # Manga-Converter
-manga converter in dark mode
+
+### Requisitos
+
+- Nodejs v18.13.0
+- Python 3.7.9
