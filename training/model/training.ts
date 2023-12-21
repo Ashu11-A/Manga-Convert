@@ -1,21 +1,17 @@
 import {
-  Logs,
-  Optimizer,
-  OptimizerConstructors,
+  CallbackList,
   Tensor,
   callbacks,
-  concat,
-  concat3d,
   layers,
-  log,
   losses,
   metrics,
   randomNormal,
   sequential,
-  stack,
-  version,
+  train,
 } from "@tensorflow/tfjs-node";
+import { convertToTensor } from "./convertToTensor";
 import { FilesLoader } from "./getData";
+import { UnresolvedLogs } from "@tensorflow/tfjs-layers/dist/logs";
 
 export async function runTraining() {
   const { imagens, mascaras } = await FilesLoader.carregarDados({
@@ -28,48 +24,72 @@ export async function runTraining() {
     return;
   }
 
-  const imagensTensor = stack(imagens)
-  const labelsTensor = stack(mascaras)
-  console.log(imagensTensor.shape);
-  console.log(labelsTensor.shape);
+  const { inputs, labels } = convertToTensor({
+    inputs: imagens,
+    labels: mascaras,
+  });
+  console.log(inputs.shape);
+  console.log(labels.shape);
 
-  const model = sequential();
-
-  model.add(layers.inputLayer({ inputShape: [1145, 784, 1] }));
-
-  model.add(layers.dense({ units: 16, activation: 'relu' }))
-  model.add(layers.dense({ units: 8, activation: 'relu' }))
-  model.add(layers.dense({ units: 4, activation: 'sigmoid' }))
+  const model = sequential({
+    layers: [
+      layers.dense({
+        units: 15,
+        activation: "relu",
+        inputShape: [1568, 784, 1],
+      }),
+      layers.dropout({ rate: 0.1 }),
+      layers.dense({ units: 7, activation: "relu" }),
+      layers.dropout({ rate: 0.1 }),
+      layers.dense({ units: 4, activation: "sigmoid" }),
+    ],
+  });
 
   model.compile({
     loss: losses.sigmoidCrossEntropy,
-    optimizer: OptimizerConstructors.adam(/*learningRate*/0.001, /*beta1*/0.9, /*beta2*/ 0.999, /*epsilon*/1e-07, ),
-    metrics: ['accuracy']
-  })
+    optimizer: train.adam(),
+    metrics: metrics.categoricalAccuracy,
+  });
   // Mostra as informações do treinamento
   model.summary();
 
   const earlyStopping = callbacks.earlyStopping({
-    monitor: "loss",
-    patience: 10,
+    monitor: "categoricalAccuracy",
+    patience: 5,
   });
   // Traina o modelo
   await model
-    .fit(imagensTensor, labelsTensor, {
-      epochs: 100,
-      batchSize: 15,
-      callbacks: [earlyStopping]
+    .fit(inputs, labels, {
+      epochs: 50,
+      batchSize: 5,
+      callbacks: [earlyStopping],
     })
     .then((info) => {
       console.log("Precisão final", info.history);
     });
 
-    const saveResult = await model.save("file://models/my-model-10");
-    console.log(
-      "Modelo salvo:",
-      new Date(saveResult.modelArtifactsInfo.dateSaved).toUTCString()
-    );
+  const saveResult = await model.save("file://models/my-model-16");
+  console.log(
+    "Modelo salvo:",
+    new Date(saveResult.modelArtifactsInfo.dateSaved).toUTCString()
+  );
 
-  const prediction = model.predict(randomNormal([1145, 784, 1]));
+  const prediction = model.predict(randomNormal([1, 1568, 784, 1]));
   (prediction as Tensor).dispose();
+}
+
+
+class MyCustomCallback extends CallbackList {
+  async onTrainBegin(logs?: UnresolvedLogs) {
+    console.log("Início do treinamento");
+  }
+  async onTrainEnd(logs?: UnresolvedLogs) {
+    console.log("Fim do treinamento");
+  }
+  async onEpochBegin(epoch: number, logs?: UnresolvedLogs) {
+    console.log(`Início da época ${epoch}`);
+  }
+  async onEpochEnd(epoch: number, logs?: UnresolvedLogs) {
+    console.log(`Fim da época ${epoch}`);
+  }
 }
