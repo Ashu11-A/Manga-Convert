@@ -28,18 +28,26 @@ export async function runTraining() {
     inputs: imagens,
     labels: mascaras,
   });
-  console.log(inputs.shape);
-  console.log(labels.shape);
 
   const model = sequential({
     layers: [
       layers.dense({
-        units: 15,
+        units: 128,
         activation: "relu",
-        inputShape: [1568, 784, 1],
+        inputShape: [1568, 784, 4],
       }),
       layers.dropout({ rate: 0.1 }),
-      layers.dense({ units: 7, activation: "relu" }),
+      layers.dense({
+        units: 64,
+        activation: "relu",
+      }),
+      layers.dropout({ rate: 0.1 }),
+      layers.dense({
+        units: 32,
+        activation: "relu",
+      }),
+      layers.dropout({ rate: 0.1 }),
+      layers.dense({ units: 16, activation: "relu" }),
       layers.dropout({ rate: 0.1 }),
       layers.dense({ units: 4, activation: "sigmoid" }),
     ],
@@ -53,6 +61,10 @@ export async function runTraining() {
   // Mostra as informações do treinamento
   model.summary();
 
+  console.log(inputs.shape);
+  console.log(labels.shape);
+  console.log(`Inputs: ${imagens.length}, Labels: ${mascaras.length}`)
+
   const earlyStopping = callbacks.earlyStopping({
     monitor: "categoricalAccuracy",
     patience: 5,
@@ -61,23 +73,22 @@ export async function runTraining() {
   await model
     .fit(inputs, labels, {
       epochs: 50,
-      batchSize: 5,
+      batchSize: 1,
       callbacks: [earlyStopping],
     })
     .then((info) => {
       console.log("Precisão final", info.history);
     });
 
-  const saveResult = await model.save("file://models/my-model-16");
+  const saveResult = await model.save("file://models/my-model-17");
   console.log(
     "Modelo salvo:",
     new Date(saveResult.modelArtifactsInfo.dateSaved).toUTCString()
   );
 
-  const prediction = model.predict(randomNormal([1, 1568, 784, 1]));
+  const prediction = model.predict(randomNormal([1, 1568, 784, 4]));
   (prediction as Tensor).dispose();
 }
-
 
 class MyCustomCallback extends CallbackList {
   async onTrainBegin(logs?: UnresolvedLogs) {

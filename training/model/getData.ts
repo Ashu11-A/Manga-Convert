@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { lstatSync, readFileSync, readdirSync, statSync } from "fs";
 import path from "path";
 
 export class FilesLoader {
@@ -6,38 +6,35 @@ export class FilesLoader {
     diretorioImagens: string;
     diretorioMascaras: string;
   }): Promise<{
-    imagens: Buffer[]
-    mascaras: Buffer[]
+    imagens: Buffer[];
+    mascaras: Buffer[];
   }> {
-      const { diretorioImagens, diretorioMascaras } = options;
-      const imagens = [];
-      const mascaras = [];
+    const { diretorioImagens, diretorioMascaras } = options;
+    const imagens: Buffer[] = [];
+    const mascaras: Buffer[] = [];
 
-      // Obter lista de nomes de arquivos no diretório de imagens
-      const files = readdirSync(diretorioImagens);
+    // Obter lista de nomes de arquivos no diretório de imagens
+    function scanDirectory(diretorio: string) {
+      readdirSync(diretorio).forEach((file) => {
+        const fullPath = path.join(diretorio, file);
 
-      for (const file of files) {
-        const filePath = path.join(diretorioImagens, file);
-        const stat = statSync(filePath);
-
-        if (stat.isDirectory()) {
-          return this.carregarDados({
-            diretorioImagens: filePath,
-            diretorioMascaras: diretorioMascaras,
-          });
-        } else if (file.endsWith(".png")) {
+        if (lstatSync(fullPath).isDirectory()) {
+          scanDirectory(fullPath);
+        } else if (path.extname(fullPath) === '.png') {
           // Carregar imagem original
-          const imagemBuffer = readFileSync(filePath);
+          const imagemBuffer = readFileSync(fullPath);
           imagens.push(imagemBuffer);
 
           // Construir o caminho para a máscara correspondente
           const mascaraBuffer = readFileSync(
-            filePath.replace("original", "mark")
+            fullPath.replace("original", "mark")
           );
           mascaras.push(mascaraBuffer);
         }
-      }
+      });
+    }
+    scanDirectory(diretorioMascaras);
 
-      return { imagens, mascaras };
+    return { imagens, mascaras };
   }
 }
