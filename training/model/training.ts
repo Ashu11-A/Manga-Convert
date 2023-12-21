@@ -12,6 +12,7 @@ import {
 import { convertToTensor } from "./convertToTensor";
 import { FilesLoader } from "./getData";
 import { UnresolvedLogs } from "@tensorflow/tfjs-layers/dist/logs";
+import { writeFileSync } from "fs";
 
 export async function runTraining() {
   const { imagens, mascaras } = await FilesLoader.carregarDados({
@@ -24,18 +25,16 @@ export async function runTraining() {
     return;
   }
 
+  // <-- Converte/Embaralha todos os dados para o Tensor -->
   const { inputs, labels } = convertToTensor({
     inputs: imagens,
     labels: mascaras,
   });
 
+  // <-- Cria o modelo -->
   const model = sequential({
     layers: [
-      layers.dense({
-        units: 128,
-        activation: "relu",
-        inputShape: [1568, 784, 4],
-      }),
+      layers.inputLayer({ inputShape: [1536, 1024, 4]}),
       layers.dropout({ rate: 0.1 }),
       layers.dense({
         units: 64,
@@ -46,48 +45,54 @@ export async function runTraining() {
         units: 32,
         activation: "relu",
       }),
-      layers.dropout({ rate: 0.1 }),
       layers.dense({ units: 16, activation: "relu" }),
-      layers.dropout({ rate: 0.1 }),
       layers.dense({ units: 4, activation: "sigmoid" }),
     ],
   });
 
   model.compile({
     loss: losses.sigmoidCrossEntropy,
-    optimizer: train.adam(),
-    metrics: metrics.categoricalAccuracy,
+    optimizer: train.sgd(0.01),
+    metrics: metrics.binaryCrossentropy,
   });
-  // Mostra as informações do treinamento
+
+  // <-- Mostra as informações do treinamento -->
   model.summary();
 
-  console.log(inputs.shape);
-  console.log(labels.shape);
-  console.log(`Inputs: ${imagens.length}, Labels: ${mascaras.length}`)
+  console.log('Inputs: ', inputs.shape);
+  console.log('Labels: ', labels.shape);
 
+  // <-- Isso verifica se está dendo progresso, caso não para o treinamento -->
   const earlyStopping = callbacks.earlyStopping({
-    monitor: "categoricalAccuracy",
+    monitor: "binaryCrossentropy",
     patience: 5,
+  })
+
+  // <-- Traina o modelo -->
+  const result = await model.fit(inputs, labels, {
+    epochs: 50,
+    batchSize: 1,
+    callbacks: [earlyStopping],
   });
-  // Traina o modelo
-  await model
-    .fit(inputs, labels, {
-      epochs: 50,
-      batchSize: 1,
-      callbacks: [earlyStopping],
-    })
-    .then((info) => {
-      console.log("Precisão final", info.history);
-    });
 
-  const saveResult = await model.save("file://models/my-model-17");
-  console.log(
-    "Modelo salvo:",
-    new Date(saveResult.modelArtifactsInfo.dateSaved).toUTCString()
-  );
+  console.log("Precisão final", result.history);
 
-  const prediction = model.predict(randomNormal([1, 1568, 784, 4]));
-  (prediction as Tensor).dispose();
+  const totalModal = FilesLoader.countFolders('models')
+  model.save(`file://models/my-model-${totalModal}`).then((saveResult) => {
+    writeFileSync(`models/my-model-${totalModal}/data.json`, JSON.stringify({
+      epochs: result.epoch,
+      history: result.history,
+      data: result.validationData,
+      params: result.params
+    }))
+    console.log(
+      "Modelo salvo:",
+      new Date(saveResult.modelArtifactsInfo.dateSaved).toUTCString()
+    );
+  })
+
+  const prediction = model.predict(randomNormal([1, 1536, 1024, 4]));
+  (prediction as Tensor).print();
 }
 
 class MyCustomCallback extends CallbackList {

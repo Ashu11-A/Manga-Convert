@@ -1,12 +1,11 @@
 import {
   Rank,
   Tensor,
-  Tensor3D,
-  Tensor4D,
   node,
   stack,
+  tensor1d,
   tidy,
-  util,
+  util
 } from "@tensorflow/tfjs-node";
 
 export function convertToTensor(options: {
@@ -23,19 +22,26 @@ export function convertToTensor(options: {
   const { inputs, labels } = options;
 
   return tidy(() => {
-    util.shuffle(inputs);
-    util.shuffle(labels);
 
+    // <-- Faz o redimencionamento da imagens -->
     const inputResized = inputs.map((img) => {
-        return node.decodeImage(img).resizeBilinear([1568, 784])
+        return node.decodeImage(img).resizeBilinear([1536, 1024])
     })
     const labelResized = labels.map((img) => {
-        return node.decodeImage(img).resizeBilinear([1568, 784])
+        return node.decodeImage(img).resizeBilinear([1536, 1024])
     })
 
-    const inputTensor = stack(inputResized);
-    const labelsTensor = stack(labelResized);
+    let inputTensor = stack(inputResized);
+    let labelsTensor = stack(labelResized);
 
+    // <-- Embaralhamento -->
+    const indices = util.createShuffledIndices(inputTensor.shape[0])
+    const tensorIndices = tensor1d(Array.from(indices), 'int32'); 
+
+    inputTensor = inputTensor.gather(tensorIndices)
+    labelsTensor = labelsTensor.gather(tensorIndices)
+
+    // <-- Converte para o espectro [0, 1] -->
     const inputMax = inputTensor.max();
     const inputMin = inputTensor.min();
     const labelMax = labelsTensor.max();

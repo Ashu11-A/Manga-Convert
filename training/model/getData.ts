@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, readdirSync, statSync } from "fs";
+import { lstatSync, readFileSync, readdir, readdirSync } from "fs";
 import path from "path";
 
 export class FilesLoader {
@@ -20,7 +20,7 @@ export class FilesLoader {
 
         if (lstatSync(fullPath).isDirectory()) {
           scanDirectory(fullPath);
-        } else if (path.extname(fullPath) === '.png') {
+        } else if (path.extname(fullPath) === ".png") {
           // Carregar imagem original
           const imagemBuffer = readFileSync(fullPath);
           imagens.push(imagemBuffer);
@@ -36,5 +36,18 @@ export class FilesLoader {
     scanDirectory(diretorioMascaras);
 
     return { imagens, mascaras };
+  }
+  public static countFolders(diretorio: string): number {
+    let counter: number = 0;
+    readdir(diretorio, (erro, arquivos) => {
+      arquivos.forEach((arquivo) => {
+        if (lstatSync(arquivo).isDirectory()) {
+          counter++;
+        }
+      });
+
+      console.log(`Total de pastas: ${counter}`);
+    });
+    return counter
   }
 }

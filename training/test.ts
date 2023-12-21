@@ -16,7 +16,7 @@ import { convertToTensor } from "./model/convertToTensor";
 import sizeOf from 'image-size'
 
 export async function testRun() {
-  const model = await loadLayersModel("file://models/my-model-16/model.json");
+  const model = await loadLayersModel("file://models/my-model-18/model.json");
 
   const { imagens, mascaras } = await FilesLoader.carregarDados({
     diretorioImagens: "./dados/teste/original",
@@ -35,7 +35,7 @@ export async function testRun() {
     optimizer: train.adam(),
     metrics: metrics.categoricalAccuracy,
   });
-
+  
   const evaluation = model.evaluate(inputs, labels);
   if (Array.isArray(evaluation)) {
     evaluation.forEach((metricTensor) => metricTensor.print());
@@ -44,12 +44,11 @@ export async function testRun() {
   }
 
   for (const [currentImage, img] of imagens.entries()) {
-    const imgResized = [node.decodeImage(img).resizeBilinear([1568, 784])]
+    const imgResized = [node.decodeImage(img).resizeBilinear([1536, 1024])]
     const imgTensor = stack(imgResized)
     const imgMin = imgTensor.min()
     const imgMax = imgTensor.max()
     const normalizedImg = imgTensor.sub(imgMin).div(imgMax.sub(imgMin))
-  
 
     const output = model.predict(normalizedImg) as Tensor<Rank>;
     const pred3d = output.squeeze([0]) as Tensor3D;
