@@ -2,4 +2,7 @@ node_modules
 dados
 models
 build/config.gypi
-test
+Lib
+Scripts
+pyvenv.cfg
+*.png

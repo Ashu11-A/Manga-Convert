@@ -25,13 +25,13 @@ async def runTraining():
             print('Nenhum dado carregado!')
             return
         loaderTensor = TensorLoader()
-        tensor = loaderTensor.convertToTensor(inputs=imagens, labels=mascaras)
-        inputs = tensor['inputs']
-        labels = tensor['labels']
+        dataset = loaderTensor.convertToTensor(inputs=imagens, labels=mascaras)
         
         model = keras.Sequential (
             [
-                layers.InputLayer(input_shape=[1536, 1024, 4]),
+                layers.InputLayer(input_shape=[768, 512, 4]),
+                layers.Dense(units=128, activation='relu'),
+                layers.Dropout(0.1),
                 layers.Dense(units=64, activation='relu'),
                 layers.Dropout(0.1),
                 layers.Dense(units=32, activation='relu'),
@@ -44,14 +44,14 @@ async def runTraining():
         model.compile(
             loss=keras.losses.BinaryCrossentropy(),
             optimizer=keras.optimizers.Adam(),
-            metrics=keras.metrics.Accuracy()
+            metrics=keras.metrics.Accuracy(),
+            run_eagerly=True
         )
         
         model.summary()
         
         result = await model.fit(
-            x=inputs,
-            y=labels,
+            dataset,
             batch_size=1,
             epochs=50,
             use_multiprocessing=True
@@ -59,20 +59,26 @@ async def runTraining():
         print('Precisão final: ', result.history)
 
         totalModal = len([name for name in os.listdir('models') if os.path.isdir(os.path.join('models', name))])
+
+        keras.saving.save_model(
+            model,
+            filepath=f'models/my-model-{totalModal}',
+            overwrite=True
+        )
         
-        model.save(f'file://models/my-model-{totalModal}')
-        
-        with open(f'models/my-model-{totalModal}/data.json', 'w') as f:
+        with open(f'models/my-model-{totalModal}/model.json') as jsonFile:
+            jsonFile.write(model.to_json())
+        with open(f'models/my-model-{totalModal}/data.json', 'w') as dataFile:
             json.dump({
                 'epochs': result.epoch,
                 'history': result.history,
                 'data': result.validationData,
                 'params': result.params
-            }, f)
+            }, dataFile)
             
         print(f'Modelo salvo: {datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")}')
             
-        prediction = model.predict(tf.random.normal([1, 1536, 1024, 4]))
+        prediction = model.predict(tf.random.normal([1, 768, 512, 4]))
         print(prediction)
     
 asyncio.run(runTraining())
