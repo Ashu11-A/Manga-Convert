@@ -5,7 +5,8 @@ import {
   Tensor3D,
   browser,
   node,
-  stack
+  stack,
+  tile
 } from "@tensorflow/tfjs-node";
 import { writeFile } from 'fs';
 import sizeOf from 'image-size';
@@ -13,16 +14,18 @@ import sharp from "sharp";
 import { FilesLoader } from "./model/getData";
 
 export async function testRun() {
-  const model = await loadGraphModel("file://models/my-model-27-convert/model.json");
+  
+  const totalModel = await FilesLoader.countFolders('models')
+  const model = await loadGraphModel(`file://models/my-model-${totalModel}/model.json`);
 
-  const { imagens, mascaras } = await FilesLoader.carregarDados({
+  const { imagens } = await FilesLoader.carregarDados({
     diretorioImagens: "./dados/teste/original",
     diretorioMascaras: "./dados/teste/mark",
   });
 
   for (const [currentImage, img] of imagens.entries()) {
     const inputResized = [node.decodeImage(img).resizeBilinear([768, 512])]
-    let inputTensor = stack(inputResized);
+    let inputTensor = tile(stack(inputResized), [1, 1, 1, 4])
     const inputMax = inputTensor.max();
     const inputMin = inputTensor.min();
     const normalizedInputs = inputTensor
@@ -51,7 +54,7 @@ export async function testRun() {
       .png()
       .toFile(`test/prediction-${currentImage}.png`);
     writeFile(`test/prediction-${currentImage}-original.png`, img, err => {
-      console.log(err)
+      if (err) console.log(err)
     })
   }
 }

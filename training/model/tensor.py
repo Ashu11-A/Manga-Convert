@@ -5,11 +5,16 @@ class TensorLoader:
     def convertToTensor(self, inputs: list[bytes], labels: list[bytes]):
          # <-- Faz o redimencionamento da imagens -->
         def resizeImages(img: bytes):
-            decodeImg = tf.io.decode_png(img)
-            tensorImg = tf.convert_to_tensor(decodeImg)
-            convertImg = tf.image.resize(tensorImg, [768, 512])
+            decodeImg = tf.io.decode_png(img, channels = 4)
+            convertImg = tf.image.resize(decodeImg, [768, 512])
             
-            return convertImg
+            minVal = tf.reduce_min(convertImg)
+            maxVal = tf.reduce_max(convertImg)
+            
+            if minVal == maxVal:
+                return convertImg
+            else:
+                return (convertImg - minVal) / (maxVal - minVal)
 
         # Criar Dataset
         dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
@@ -18,21 +23,6 @@ class TensorLoader:
         dataset = dataset.map(lambda img, mask: (resizeImages(img), resizeImages(mask)))
         
         # Deixa os dados embaralhados para inpedir viéses
-        dataset = dataset.shuffle(buffer_size=100)
-
-        def normalize(inputTensor, labelTensor):
-            inputMax = tf.reduce_max(inputTensor)
-            inputMin = tf.reduce_min(inputTensor)
-            
-            labelMax = tf.reduce_max(labelTensor)
-            labelMin = tf.reduce_min(labelTensor)
-            
-            # <-- Normaliza os tensores para o espectro [0, 1] -->
-            normalizedInputs = (inputTensor - inputMin) / (inputMax - inputMin)
-            normalizedLabels = (labelTensor - labelMin) / (labelMax - labelMin)
-            return normalizedInputs, normalizedLabels
-        
-        dataset = dataset.map(normalize)
-        dataset = dataset.batch(batch_size=1)
+        dataset = dataset.shuffle(buffer_size=100).batch(batch_size=1)
         
         return dataset

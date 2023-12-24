@@ -77,9 +77,9 @@ export async function runTraining() {
 
   console.log("Precisão final", result.history);
 
-  const totalModal = FilesLoader.countFolders('models')
-  model.save(`file://models/my-model-${totalModal}`).then((saveResult) => {
-    writeFileSync(`models/my-model-${totalModal}/data.json`, JSON.stringify({
+  const totalModel = FilesLoader.countFolders('models')
+  model.save(`file://models/my-model-${totalModel}`).then((saveResult) => {
+    writeFileSync(`models/my-model-${totalModel}/data.json`, JSON.stringify({
       epochs: result.epoch,
       history: result.history,
       data: result.validationData,

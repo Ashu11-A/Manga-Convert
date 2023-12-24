@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, readdir, readdirSync } from "fs";
+import { lstat, lstatSync, readFile, readFileSync, readdir, readdirSync } from "fs";
 import path from "path";
 
 export class FilesLoader {
@@ -37,17 +37,18 @@ export class FilesLoader {
 
     return { imagens, mascaras };
   }
-  public static countFolders(diretorio: string): number {
+  public static async countFolders(diretorio: string): Promise<number> {
     let counter: number = 0;
-    readdir(diretorio, (erro, arquivos) => {
-      arquivos.forEach((arquivo) => {
-        if (lstatSync(arquivo).isDirectory()) {
-          counter++;
-        }
-      });
+    console.log(diretorio)
+    const arquivos = readdirSync(diretorio)
 
-      console.log(`Total de pastas: ${counter}`);
-    });
-    return counter
+    arquivos.forEach((arquivo) => {
+      const result = lstatSync(`${diretorio}/${arquivo}`)
+      if (result.isDirectory()) {
+        counter++
+      }
+    })
+    console.log(`Total de pastas: ${counter}`);
+    return counter - 1
   }
 }
