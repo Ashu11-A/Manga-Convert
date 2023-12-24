@@ -7,7 +7,9 @@ class TensorLoader:
         def resizeImages(img: bytes):
             decodeImg = tf.io.decode_png(img)
             tensorImg = tf.convert_to_tensor(decodeImg)
-            return tf.image.resize(tensorImg, [768, 512])
+            convertImg = tf.image.resize(tensorImg, [768, 512])
+            
+            return convertImg
 
         # Criar Dataset
         dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))

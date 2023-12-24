@@ -22,10 +22,10 @@
   },
   "homepage": "https://github.com/Ashu11-A/Manga-Converter#readme",
   "dependencies": {
-    "@img/sharp-win32-x64": "^0.33.1",
     "@tensorflow/tfjs": "^4.15.0",
     "@tensorflow/tfjs-converter": "^4.15.0",
     "@tensorflow/tfjs-node": "^4.15.0",
+    "@tensorflow/tfjs-node-gpu": "^4.15.0",
     "color": "^4.2.3",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

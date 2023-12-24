@@ -9,6 +9,9 @@
 ### Treinamento - Develop
 
 ##### Iniciar Ambiente Virtual
+WSL2: https://www.tensorflow.org/install/pip?hl=pt-br#windows-wsl2_1
+
+###### Windowns
 ```sh
 python.exe -m venv ./
 
@@ -17,6 +20,13 @@ python.exe -m venv ./
 
 # Prompt
 .\Scripts\activate.bat
+```
+
+###### Linux
+```sh
+virtualenv ./
+
+source bin/activate
 ```
 
 ##### Salvar Libs atuais

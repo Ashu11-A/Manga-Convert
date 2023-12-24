@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 
 async def runTraining():
-    markDir: str = 'dados/treino/mark'
+    markDir: str = 'dados/treino/original'
     loaderFiles = DataLoader()
     
     folters = loaderFiles.countFolders('models')
@@ -29,31 +29,28 @@ async def runTraining():
         
         model = keras.Sequential (
             [
-                layers.InputLayer(input_shape=[768, 512, 4]),
-                layers.Dense(units=128, activation='relu'),
+                layers.Dense(units=128, activation="relu"),
                 layers.Dropout(0.1),
-                layers.Dense(units=64, activation='relu'),
+                layers.Dense(units=64, activation="relu"),
                 layers.Dropout(0.1),
-                layers.Dense(units=32, activation='relu'),
-                layers.Dropout(0.1),
-                layers.Dense(units=16, activation='relu'),
                 layers.Dense(units=4, activation='sigmoid'),
-            ]
-        )
+            ])
         
         model.compile(
-            loss=keras.losses.BinaryCrossentropy(),
-            optimizer=keras.optimizers.Adam(),
-            metrics=keras.metrics.Accuracy(),
-            run_eagerly=True
+            loss='binary_crossentropy',
+            optimizer='adam',
+            metrics=['accuracy']
+            # run_eagerly=True
         )
+        
+        model.build(input_shape=[1, 768, 512, 4])
         
         model.summary()
         
-        result = await model.fit(
+        result = model.fit(
             dataset,
             batch_size=1,
-            epochs=50,
+            epochs=10,
             use_multiprocessing=True
             )
         print('Precisão final: ', result.history)
@@ -66,13 +63,13 @@ async def runTraining():
             overwrite=True
         )
         
-        with open(f'models/my-model-{totalModal}/model.json') as jsonFile:
+        with open(f'models/my-model-{totalModal}/model.json', 'w') as jsonFile:
             jsonFile.write(model.to_json())
         with open(f'models/my-model-{totalModal}/data.json', 'w') as dataFile:
             json.dump({
                 'epochs': result.epoch,
                 'history': result.history,
-                'data': result.validationData,
+                'data': result.validation_data,
                 'params': result.params
             }, dataFile)
             

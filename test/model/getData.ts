@@ -33,7 +33,7 @@ export class FilesLoader {
         }
       });
     }
-    scanDirectory(diretorioMascaras);
+    scanDirectory(diretorioImagens);
 
     return { imagens, mascaras };
   }

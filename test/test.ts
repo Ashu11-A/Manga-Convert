@@ -1,3 +1,4 @@
+import { loadGraphModel } from '@tensorflow/tfjs-converter';
 import {
   Rank,
   Tensor,
@@ -6,28 +7,31 @@ import {
   node,
   stack
 } from "@tensorflow/tfjs-node";
+import { writeFile } from 'fs';
 import sizeOf from 'image-size';
 import sharp from "sharp";
 import { FilesLoader } from "./model/getData";
-import converter from '@tensorflow/tfjs-converter'
-import { TFSavedModel, loadSavedModel, getMetaGraphsFromSavedModel } from "@tensorflow/tfjs-node/dist/saved_model";
 
 export async function testRun() {
-  const model = await converter.GraphModel("models/my-model-19")
+  const model = await loadGraphModel("file://models/my-model-27-convert/model.json");
 
-  const { imagens } = await FilesLoader.carregarDados({
+  const { imagens, mascaras } = await FilesLoader.carregarDados({
     diretorioImagens: "./dados/teste/original",
     diretorioMascaras: "./dados/teste/mark",
   });
 
   for (const [currentImage, img] of imagens.entries()) {
-    const imgResized = [node.decodeImage(img).resizeBilinear([768, 512])]
-    const imgTensor = stack(imgResized)
-    const imgMin = imgTensor.min()
-    const imgMax = imgTensor.max()
-    const normalizedImg = imgTensor.sub(imgMin).div(imgMax.sub(imgMin))
+    const inputResized = [node.decodeImage(img).resizeBilinear([768, 512])]
+    let inputTensor = stack(inputResized);
+    const inputMax = inputTensor.max();
+    const inputMin = inputTensor.min();
+    const normalizedInputs = inputTensor
+    .sub(inputMin)
+    .div(inputMax.sub(inputMin));
 
-    const output = model.predict(normalizedImg) as Tensor<Rank>;
+    console.log(normalizedInputs.shape)
+
+    const output = model.predict(normalizedInputs) as Tensor<Rank>;
     const pred3d = output.squeeze([0]) as Tensor3D;
     const pixelsClamped: Uint8ClampedArray = await browser.toPixels(pred3d);
     const pixels = Buffer.from(pixelsClamped.buffer);
@@ -46,6 +50,9 @@ export async function testRun() {
       .resize({ width, height })
       .png()
       .toFile(`test/prediction-${currentImage}.png`);
+    writeFile(`test/prediction-${currentImage}-original.png`, img, err => {
+      console.log(err)
+    })
   }
 }
 testRun();

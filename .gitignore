@@ -1,8 +1,15 @@
 node_modules
 dados
 models
+*.png
+
+# Python - Windowns
 build/config.gypi
 Lib
 Scripts
 pyvenv.cfg
-*.png
+
+# Python - Linux
+bin
+lib
+.vscode/settings.json
