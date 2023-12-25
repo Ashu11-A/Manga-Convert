@@ -8,6 +8,15 @@
 
 ### Treinamento - Develop
 
+##### Instalar pillow
+
+```sh
+apt install libjpeg-dev zlib1g-dev
+
+python3 -m pip install --upgrade pip setuptools wheel
+sudo pip3 install pillow --no-binary :all:
+```
+
 ##### Iniciar Ambiente Virtual
 WSL2: https://www.tensorflow.org/install/pip?hl=pt-br#windows-wsl2_1
 

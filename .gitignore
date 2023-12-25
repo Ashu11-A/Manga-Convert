@@ -2,6 +2,10 @@ node_modules
 dados
 models
 *.png
+logs
+
+# Python
+*.pyc
 
 # Python - Windowns
 build/config.gypi

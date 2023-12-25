@@ -5,35 +5,33 @@ from typing import Dict, List, Union
 
 class DataLoader:
     async def LoadFiles(self, markDir: str = '') -> Union[Dict[str, List[bytes]], None]:
-        
-        imagens: list[bytes] = []
-        mascaras: list[bytes] = []
-        
-        def scanDirectory(dir: str):
-            for entry in os.scandir(dir):
-                if entry.is_dir(follow_symlinks=False): # Verifica se o arquivo é um diretorio, se sim reescaneia os itens dessa pasta
-                    scanDirectory(entry.path)
+        images: List[bytes] = []
+        masks: List[bytes] = []
+
+        def scan_directory(directory: str):
+            for entry in os.scandir(directory):
+                if entry.is_dir(follow_symlinks=False):
+                    scan_directory(entry.path)
                 elif entry.is_file(follow_symlinks=False) and entry.path.endswith('.png'):
                     with open(entry.path, 'rb') as file:
-                        imageBuffer = file.read()
-                        imagens.append(imageBuffer)
-                        file.close()
+                        image_buffer = file.read()
+                        images.append(image_buffer)
 
-                        markPath = Path(entry.path.replace("original", "mark")).with_suffix('.png')
-                        if markPath.exists():
-                            with open(markPath, 'rb') as file:
-                                markBuffer = file.read()
-                                mascaras.append(markBuffer)
-                                file.close
-        
+                    mark_path = Path(entry.path.replace("train", "validation")).with_suffix('.png')
+                    if mark_path.exists():
+                        with open(mark_path, 'rb') as file:
+                            mask_buffer = file.read()
+                            masks.append(mask_buffer)
+
         if markDir == '':
             print('Nenhum diretório foi repassado!')
-        else:                        
-            scanDirectory(markDir)
-            return { 'imagens': imagens, 'mascaras': mascaras }
-    def countFolders(self, dir: str) -> int:
-        count: int = 0
-        for entry in os.scandir(dir):
+        else:
+            scan_directory(markDir)
+            return {'images': images, 'masks': masks}
+
+    def countFolders(self, directory: str) -> int:
+        count = 0
+        for entry in os.scandir(directory):
             if entry.is_dir(follow_symlinks=False):
                 count += 1
         return count

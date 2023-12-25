@@ -27,7 +27,7 @@ export class FilesLoader {
 
           // Construir o caminho para a máscara correspondente
           const mascaraBuffer = readFileSync(
-            fullPath.replace("original", "mark")
+            fullPath.replace("train", "validation")
           );
           mascaras.push(mascaraBuffer);
         }

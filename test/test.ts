@@ -19,8 +19,8 @@ export async function testRun() {
   const model = await loadGraphModel(`file://models/my-model-${totalModel}/model.json`);
 
   const { imagens } = await FilesLoader.carregarDados({
-    diretorioImagens: "./dados/teste/original",
-    diretorioMascaras: "./dados/teste/mark",
+    diretorioImagens: "./dados/teste/train",
+    diretorioMascaras: "./dados/teste/validation",
   });
 
   for (const [currentImage, img] of imagens.entries()) {
@@ -53,7 +53,7 @@ export async function testRun() {
       .resize({ width, height })
       .png()
       .toFile(`test/prediction-${currentImage}.png`);
-    writeFile(`test/prediction-${currentImage}-original.png`, img, err => {
+    writeFile(`test/prediction-${currentImage}-train.png`, img, err => {
       if (err) console.log(err)
     })
   }

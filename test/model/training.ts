@@ -16,8 +16,8 @@ import { writeFileSync } from "fs";
 
 export async function runTraining() {
   const { imagens, mascaras } = await FilesLoader.carregarDados({
-    diretorioImagens: "./dados/treino/original",
-    diretorioMascaras: "./dados/treino/mark",
+    diretorioImagens: "./dados/treino/train",
+    diretorioMascaras: "./dados/treino/validation",
   });
 
   if (imagens.length === 0 || mascaras.length === 0) {
