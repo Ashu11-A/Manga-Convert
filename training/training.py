@@ -64,7 +64,8 @@ async def runTraining():
                     objective='val_accuracy',
                     max_epochs=20,
                     factor=3,
-                    project_name=f'models/my-model-{totalModel}'
+                    directory='models',
+                    project_name=f'my-model-{totalModel}'
                 )
                 stop_early = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=10)
                 tuner.search(train_dataset, validation_data=val_dataset, epochs=20, callbacks=[stop_early], batch_size=1, use_multiprocessing=True)
