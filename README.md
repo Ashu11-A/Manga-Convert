@@ -5,10 +5,15 @@
 - Nodejs v18.13.0
 - Python 3.7.9
 
+### Instalação
 
-### Treinamento - Develop
+##### Requirements
 
-##### Instalar pillow
+```sh
+pip install -r requirements.txt
+```
+
+##### Pillow
 
 ```sh
 apt install libjpeg-dev zlib1g-dev
@@ -38,12 +43,24 @@ virtualenv ./
 source bin/activate
 ```
 
+### Treinamento
+
+```sh
+# Procure o melhor resultado.
+python training/training.py --best
+
+# Rode um script já feito.
+python training/training.py
+```
+
 ##### Salvar Libs atuais
 ```sh
 pip freeze > .\requirements.txt
 ```
 
-##### Erros e suas soluções
+### Possíveis Erros
+
+#### Windows
 - Comando de inicialização do ambiente virtual dá erro:
 
 ```sh
@@ -53,8 +70,7 @@ neste sistema. Para obter mais informações, consulte
 about_Execution_Policies em
 https://go.microsoft.com/fwlink/?LinkID=135170.
 ```
-Solução:
-Rode o PowerShell em modo Administrativo, e use o comando
+- Solução: Rode o PowerShell em modo Administrativo, e use o comando
 ```sh
  Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```

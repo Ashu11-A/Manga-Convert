@@ -4,7 +4,9 @@ import {
   Tensor,
   Tensor3D,
   browser,
+  image,
   node,
+  scalar,
   stack,
   tile
 } from "@tensorflow/tfjs-node";
@@ -24,14 +26,11 @@ export async function testRun() {
   });
 
   for (const [currentImage, img] of imagens.entries()) {
-    const inputResized = [node.decodeImage(img).resizeBilinear([768, 512])]
-    let inputTensor = tile(stack(inputResized), [1, 1, 1, 4])
-    const inputMax = inputTensor.max();
-    const inputMin = inputTensor.min();
-    const normalizedInputs = inputTensor
-    .sub(inputMin)
-    .div(inputMax.sub(inputMin));
+    const inputResized = node.decodeImage(img, 4).resizeBilinear([768, 512])
+    const inputTensor = stack([inputResized])
+    const normalizedInputs = inputTensor.div(scalar(255.0))
 
+    console.log(normalizedInputs.min().dataSync()[0], normalizedInputs.max().dataSync()[0])
     console.log(normalizedInputs.shape)
 
     const output = model.predict(normalizedInputs) as Tensor<Rank>;
@@ -40,6 +39,9 @@ export async function testRun() {
     const pixels = Buffer.from(pixelsClamped.buffer);
 
     const { width, height } = sizeOf(img)
+
+    console.log(pred3d.shape)
+    console.log(width, height)
 
     if (width === undefined || height === undefined) return
 
@@ -51,7 +53,6 @@ export async function testRun() {
       }
     })
       .resize({ width, height })
-      .png()
       .toFile(`test/prediction-${currentImage}.png`);
     writeFile(`test/prediction-${currentImage}-train.png`, img, err => {
       if (err) console.log(err)
