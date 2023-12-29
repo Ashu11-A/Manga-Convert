@@ -13,6 +13,7 @@ class DataLoader:
                 if entry.is_dir(follow_symlinks=False):
                     scan_directory(entry.path)
                 elif entry.is_file(follow_symlinks=False) and entry.path.endswith('.png'):
+                    # filename, file_extension = os.path.splitext(entry.path)
                     mark_path = Path(entry.path.replace("train", "validation")).with_suffix('.png')
                     if mark_path.exists():
                         with open(entry.path, 'rb') as file:
@@ -21,6 +22,10 @@ class DataLoader:
                         with open(mark_path, 'rb') as file:
                                 mask_buffer = file.read()
                                 masks.append(mask_buffer)
+                    else:
+                        print(f"Faltando: {entry.path.replace('train', 'validation')}")
+                else:
+                    print(f"File Error: {entry.path}")
 
 
         if markDir == '':

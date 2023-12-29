@@ -12,7 +12,6 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
 import keras_tuner as kt
 import argparse
 
-
 async def runTraining():
     markDir = 'dados/treino/train'
     loaderFiles = DataLoader()
@@ -46,37 +45,49 @@ async def runTraining():
             args = parser.parse_args()
             
             dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
-            # Suponha que DATASET_SIZE é o tamanho do seu conjunto de dados
-            DATASET_SIZE = len(inputs)
-            # Defina o tamanho do conjunto de treinamento e validação
-            train_size = int(0.8 * DATASET_SIZE)
-            val_size = int(0.2 * DATASET_SIZE)
-            # Embaralhe o conjunto de dados
-            dataset = dataset.shuffle(DATASET_SIZE)
+            # Tamanho do conjunto de dados
+            DATASET_SIZE = len(labels)
+            # Tamanho do conjunto de treinamento e validação
+            N_TRAIN = int(0.8 * DATASET_SIZE)
+            N_VALIDATION = int(0.2 * DATASET_SIZE)
+            BATCH_SIZE = 1
             # Divida o conjunto de dados em treinamento e validação
-            train_dataset = dataset.take(train_size).batch(1)
-            val_dataset = dataset.skip(train_size).take(val_size).batch(1)
+            validate_ds = dataset.take(N_VALIDATION).cache()
+            train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).cache()
+            # Juntar em pacotes de dados e misturar os dados de treinamento
+            validate_ds = validate_ds.batch(BATCH_SIZE)
+            train_ds = train_ds.shuffle(DATASET_SIZE).batch(BATCH_SIZE)
+            print(f"Treinamento: {N_TRAIN}")
+            print(f"Validadores: {N_VALIDATION}")
             
             if args.best:
                 print('Iniciando procura do melhor modelo!')
+                
                 tuner = kt.Hyperband(
                     TrainModel,
                     objective='val_accuracy',
-                    max_epochs=20,
+                    max_epochs=100,
                     factor=3,
+                    max_consecutive_failed_trials=2,
                     directory='models',
                     project_name=f'my-model-{totalModel}'
                 )
-                stop_early = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=10)
-                tuner.search(train_dataset, validation_data=val_dataset, epochs=20, callbacks=[stop_early], batch_size=1, use_multiprocessing=True)
+                tuner.search(
+                    train_ds,
+                    validation_data=validate_ds,
+                    callbacks=[
+                        EarlyStopping(monitor='val_accuracy', patience=10, verbose=1),
+                        TensorBoard(log_dir='./logs')
+                    ],
+                    batch_size=1,
+                    use_multiprocessing=True
+                )
                 best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+                best_model = tuner.get_best_models(num_models=1)[0]
                 
                 print(tuner.get_best_models()[0])
-                print(f"""
-                      A pesquisa de hiperparâmetros está concluída!
-                      O número ótimo de unidades: 1º {best_hps.get('units1')}, 2º {best_hps.get('units2')}, 3º {best_hps.get('units3')}.
-                      E por ultimo, a taxa de optimal learning rate para o optimizador é {best_hps.get('learning_rate')}.
-                """)
+                print(best_model.evaluate(train_ds))
+                print("A pesquisa de hiperparâmetros está concluída!")
                 
                 if tuner.hypermodel is not None:
                     model = tuner.hypermodel.build(best_hps)
@@ -87,13 +98,13 @@ async def runTraining():
                 model = LoaderModel()
 
             history = model.fit(
-                train_dataset,
-                validation_data=val_dataset,
+                train_ds,
+                validation_data=validate_ds,
                 epochs=50,
                 batch_size=1,
                 callbacks=[
-                    ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto'),
-                    EarlyStopping(monitor='val_accuracy', patience=10),
+                    ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
+                    EarlyStopping(monitor='val_accuracy', patience=10, verbose=1),
                     TensorBoard(log_dir='./logs')
                 ],
                 use_multiprocessing=True
@@ -118,8 +129,8 @@ async def runTraining():
                     'params': history.params
                 }, dataFile)
             
-            print(f"Imagens de treino usadas: {train_size}")
-            print(f"Imagens de Teste usadas: {val_size}")
+            print(f"Imagens de treino usadas: {N_TRAIN}")
+            print(f"Imagens de Teste usadas: {N_VALIDATION}")
 
             val_acc_per_epoch = history.history['val_accuracy']
             best_epoch = val_acc_per_epoch.index(max(val_acc_per_epoch)) + 1

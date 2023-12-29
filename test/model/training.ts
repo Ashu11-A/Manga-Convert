@@ -94,18 +94,3 @@ export async function runTraining() {
   const prediction = model.predict(randomNormal([1, 768, 512, 4]));
   (prediction as Tensor).print();
 }
-
-class MyCustomCallback extends CallbackList {
-  async onTrainBegin(logs?: UnresolvedLogs) {
-    console.log("Início do treinamento");
-  }
-  async onTrainEnd(logs?: UnresolvedLogs) {
-    console.log("Fim do treinamento");
-  }
-  async onEpochBegin(epoch: number, logs?: UnresolvedLogs) {
-    console.log(`Início da época ${epoch}`);
-  }
-  async onEpochEnd(epoch: number, logs?: UnresolvedLogs) {
-    console.log(`Fim da época ${epoch}`);
-  }
-}
