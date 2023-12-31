@@ -23,8 +23,6 @@ export async function testRun() {
     const inputResized = tf.node.decodeImage(img, 4).resizeBilinear([768, 512]);
     const inputTensor = inputResized.toFloat(); // Use toFloat() for type conversion
 
-    console.log(inputTensor.shape)
-
     const normalizedInputs = tf.tidy(() => {
       const dataMax = inputTensor.max();
       const dataMin = inputTensor.min();
@@ -32,6 +30,7 @@ export async function testRun() {
     });
 
     const imgTensor = tf.stack([normalizedInputs]);
+    console.log(imgTensor.shape)
 
     const prediction = model.predict(imgTensor);
     let pred3d: tf.Tensor3D;
@@ -43,6 +42,11 @@ export async function testRun() {
     } else {
       throw new Error("prediction deve ser um Tensor ou um Tensor[]");
     }
+    pred3d = tf.tidy(() => {
+      const dataMax = pred3d.max();
+      const dataMin = pred3d.min();
+      return pred3d.sub(dataMin).div(dataMax.sub(dataMin));
+    });
     const pixelsUint8 = await tf.browser.toPixels(pred3d); // Use toPixels() directly for Uint8Array
 
     await sharp(pixelsUint8, {

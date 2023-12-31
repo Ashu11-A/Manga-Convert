@@ -1,31 +1,52 @@
+import datetime
 from typing import List
 import tensorflow as tf
-from tensorflow_addons.image import transform as image_transform
+import keras
+from PIL import Image
+import numpy as np
+from memory_profiler import profile
 
 class TensorLoader:
-    def convert_to_tensor(self, inputs: List[bytes], labels: List[bytes]):
-        tf.config.set_soft_device_placement(True)
-        with tf.device('/gpu:0'): # type: ignore
+    def convert_to_tensor(self, inputs: list[str], labels: list[str]):
+        @profile
+        def decode_images(imgPath: str):
+                # decode_img_1 = tf.image.decode_image(tf.io.read_file(imgPath), channels=4, dtype=tf.dtypes.float32) # Mem usage: 5458.3 MiB with (387, 768, 512, 4)
+                # decode_img_2 = tf.image.decode_image(contents=imgPath, channels=4, dtype=tf.dtypes.float32) # Mem usage: 5726.7 MiB with (386, 768, 512, 4)
+                # decode_img_3 = keras.utils.load_img(path=imgPath, color_mode='rgba') # Mem usage: 7007.0 MiB with (386, 768, 512, 4)
+                # decode_img_3 = tf.image.convert_image_dtype(decode_img_3, tf.float32)
+                decode_img_4 = np.load(imgPath) # Mem usage: 5436.7 MiB with (387, 768, 512, 4)
+                decode_img_4 = decode_img_4['arr_0']
+                # decode_img_4 = decode_img_4 / 255.0
 
-            def resize_images(img: bytes):
-                    decode_img = tf.image.decode_image(contents=img, channels=4, dtype=tf.dtypes.float16) # GPU deve usar float32, CPU uint8
-                    resize_img = tf.image.resize(decode_img, [768, 512])
-                    # normalized = tf.image.per_image_standardization(resize_img)
-                    # print(tf.reduce_min(resize_img), tf.reduce_max(resize_img))
+                # resize_img = tf.image.resize(decode_img, [768, 512])
+                
+                # normalized = tf.cast(decode_img, tf.float32) / 255.0 # type: ignore
+                # normalized = tf.image.per_image_standardization(decode_img)
+                # print(tf.reduce_min(decode_img_4), tf.reduce_max(decode_img_4))
 
-                    # Optional saving for visualization:
-                    # img_array = tf.cast(tf.clip_by_value(resize_img, 0, 1) * 255, tf.uint8).numpy()
-                    # Image.fromarray(img_array).save(f"logs/resized-{number}-{type}-.png")
-                    return resize_img
-            input_resized = tf.stack([resize_images(img) for img in inputs])
-            label_resized = tf.stack([resize_images(img) for img in labels])
-            
-            print(input_resized.shape)
-            print(label_resized.shape)
-            print(input_resized.device)
-            print(input_resized.device)
+                # Optional saving for visualization:
+                # Best for save image: keras.preprocessing.image.save_img(f"logs/resized-{datetime.datetime.now().timestamp()}-{type}-.png", normalized)
+                # keras.preprocessing.image.save_img(f"logs/resized-{datetime.datetime.now().timestamp()}-{type}-.png", decode_img_4)
+                # <---- Legacy ---->
+                # Teste 1: img_array = tf.cast(tf.clip_by_value(normalized, 0, 1) * 255, tf.uint8).numpy()
+                # Teste 2: img_array = (normalized.numpy() * 255).astype(np.uint8)
+                # Teste 3: img_array = keras.utils.img_to_array(normalized, dtype='float32')
+                # Save: Image.fromarray(img_array, mode="RGBA").save(f"logs/resized-{datetime.datetime.now().timestamp()}-{type}-.png")
+                return decode_img_4
+        @profile
+        def processImages(imgList):
+            # decode_img_1: Mem usage: 7780.8 MiB
+            # decode_img_2: Mem usage: 8043.0 MiB
+            # decode_img_4: Mem usage: 7758.4 MiB
+            decoded_images = [tf.expand_dims(decode_images(img), axis=0) for img in imgList]
+            decoded_images = tf.concat(decoded_images, 0)
+            return decoded_images
+        
+        with tf.device('/CPU:0'): # type: ignore
+            label_resized = processImages(labels)
+            input_resized = processImages(inputs)
 
-            return {
-                'inputs': input_resized,
-                'labels': label_resized
-            }
+            # print(label_resized)
+            # print(label_resized)
+
+            return input_resized, label_resized
