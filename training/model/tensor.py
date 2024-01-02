@@ -8,15 +8,21 @@ from memory_profiler import profile
 
 class TensorLoader:
     def convert_to_tensor(self, inputs: list[str], labels: list[str]):
-        @profile
+        # @profile
         def decode_images(imgPath: str):
-                # decode_img_1 = tf.image.decode_image(tf.io.read_file(imgPath), channels=4, dtype=tf.dtypes.float32) # Mem usage: 5458.3 MiB with (387, 768, 512, 4)
-                # decode_img_2 = tf.image.decode_image(contents=imgPath, channels=4, dtype=tf.dtypes.float32) # Mem usage: 5726.7 MiB with (386, 768, 512, 4)
-                # decode_img_3 = keras.utils.load_img(path=imgPath, color_mode='rgba') # Mem usage: 7007.0 MiB with (386, 768, 512, 4)
+                #     Tipo     |      Dimensões     | Uso de memória (MiB)
+                # -------------|--------------------|--------
+                # decode_img_1 | (387, 768, 512, 4) | 5458.3
+                # decode_img_2 | (386, 768, 512, 4) | 5726.7
+                # decode_img_3 | (386, 768, 512, 4) | 7007.0
+                # decode_img_4 | (387, 768, 512, 4) | 5436.7
+
+                # decode_img_1 = tf.image.decode_image(tf.io.read_file(imgPath), channels=4, dtype=tf.dtypes.float32)
+                # decode_img_2 = tf.image.decode_image(contents=imgPath, channels=4, dtype=tf.dtypes.float32)
+                # decode_img_3 = keras.utils.load_img(path=imgPath, color_mode='rgba')
                 # decode_img_3 = tf.image.convert_image_dtype(decode_img_3, tf.float32)
-                decode_img_4 = np.load(imgPath) # Mem usage: 5436.7 MiB with (387, 768, 512, 4)
+                decode_img_4 = np.load(imgPath)
                 decode_img_4 = decode_img_4['arr_0']
-                # decode_img_4 = decode_img_4 / 255.0
 
                 # resize_img = tf.image.resize(decode_img, [768, 512])
                 
@@ -33,20 +39,19 @@ class TensorLoader:
                 # Teste 3: img_array = keras.utils.img_to_array(normalized, dtype='float32')
                 # Save: Image.fromarray(img_array, mode="RGBA").save(f"logs/resized-{datetime.datetime.now().timestamp()}-{type}-.png")
                 return decode_img_4
-        @profile
+        # @profile
         def processImages(imgList):
-            # decode_img_1: Mem usage: 7780.8 MiB
-            # decode_img_2: Mem usage: 8043.0 MiB
-            # decode_img_4: Mem usage: 7758.4 MiB
+            #     Tipo     |      Dimensões     | Uso de memória (MiB)
+            # -------------|--------------------|--------
+            # decode_img_1 | (387, 768, 512, 4) | 7780.8
+            # decode_img_2 | (386, 768, 512, 4) | 8043.0
+            # decode_img_4 | (387, 768, 512, 4) | 7758.4
             decoded_images = [tf.expand_dims(decode_images(img), axis=0) for img in imgList]
             decoded_images = tf.concat(decoded_images, 0)
             return decoded_images
-        
+
         with tf.device('/CPU:0'): # type: ignore
             label_resized = processImages(labels)
             input_resized = processImages(inputs)
-
-            # print(label_resized)
-            # print(label_resized)
 
             return input_resized, label_resized

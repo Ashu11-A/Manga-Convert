@@ -8,38 +8,49 @@ from model.model import TrainModel, LoaderModel
 import json
 from datetime import datetime
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
+from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN
 import keras_tuner as kt
 import argparse
 
 async def runTraining():
-    logs = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    # Uma tal de "Otimização"
-    policy = keras.mixed_precision.Policy('mixed_float16')
-    keras.mixed_precision.set_global_policy(policy)
+    # Debugging
+    # tf.debugging.set_log_device_placement(True)
     
-    tf.config.set_soft_device_placement(True)
-    tf.profiler.experimental.Profile(logdir=logs)
-    # Aumentar artificalmente a memoria vRam da GPU
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
-            logical_gpus = tf.config.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            print(e)
-
-    markDir = 'dados_cache/treino/train'
-    loaderFiles = DataLoader()
-    loaderTensor = TensorLoader()
+    seed = 4605
+    tf.random.set_seed(seed)
+    
     print("TensorFlow version: ", tf.version)
     device_name = tf.test.gpu_device_name()
     if not device_name:
         raise SystemError('GPU device not found')
     print('Found GPU at: {}'.format(device_name))
+    
+    # Optimization
+    policy = keras.mixed_precision.Policy('mixed_float16') # Calculos em float16
+    keras.mixed_precision.set_global_policy(policy)
+    print('Compute dtype: %s' % policy.compute_dtype)
+    print('Variable dtype: %s' % policy.variable_dtype)
+    
+    tf.config.set_soft_device_placement(True) # Ativar cominicação entre CPU e GPU!
+
+    logs = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tf.profiler.experimental.Profile(logdir=logs)
+
+    # Aumentar artificalmente a memoria vRam da GPU
+        # gpus = tf.config.list_physical_devices('GPU')
+        # if gpus:
+        #     try:
+        #         tf.config.set_logical_device_configuration(
+        #             gpus[0],
+        #             [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+        #         logical_gpus = tf.config.list_logical_devices('GPU')
+        #         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        #     except RuntimeError as e:
+        #         print(e)
+
+    markDir = 'dados_cache/treino/train'
+    loaderFiles = DataLoader()
+    loaderTensor = TensorLoader()
 
     imagens, mascaras = await loaderFiles.LoadFiles(markDir, onlyPath=True) or ([], [])
     
@@ -52,16 +63,13 @@ async def runTraining():
     totalModel = loaderFiles.countFolders('models')
     inputs, labels = loaderTensor.convert_to_tensor(inputs=imagens, labels=mascaras) # type: ignore
     
-    print('Compute dtype: %s' % policy.compute_dtype)
-    print('Variable dtype: %s' % policy.variable_dtype)
-    
     parser = argparse.ArgumentParser(description='Treinamento de modelo')
     parser.add_argument('--best', action='store_true', help='Se o treinamento deve achar o melhor resultado')
     args = parser.parse_args()
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
     # Tamanho do conjunto de dados
-    DATASET_SIZE = len(labels)
+    DATASET_SIZE = len(imagens)
     # Embaralha as coisas
     dataset = dataset.shuffle(DATASET_SIZE)
     # Tamanho do conjunto de treinamento e validação
@@ -69,13 +77,10 @@ async def runTraining():
     N_VALIDATION = int(0.2 * DATASET_SIZE)
     BATCH_SIZE = 1
     # Divida o conjunto de dados em treinamento e validação
-    validate_ds = dataset.take(N_VALIDATION).cache()
-    train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).cache()
-    # Juntar em pacotes de dados e misturar os dados de treinamento
-    validate_ds = validate_ds.batch(BATCH_SIZE)
-    train_ds = train_ds.batch(BATCH_SIZE)
-    print(f"Treinamento: {len(list(train_ds.as_numpy_iterator()))}")
-    print(f"Validadores: {len(list(validate_ds.as_numpy_iterator()))}")
+    validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).cache()
+    train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).cache()
+    print(f"Treinamento: {N_TRAIN}")
+    print(f"Validadores: {N_VALIDATION}")
 
     if args.best:
         print('Iniciando procura do melhor modelo!')
@@ -95,9 +100,8 @@ async def runTraining():
             callbacks=[
                 EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
                 EarlyStopping(monitor='val_loss', patience=20, verbose=1),
-                EarlyStopping(monitor='accuracy', patience=20, verbose=1),
-                EarlyStopping(monitor='loss', patience=20, verbose=1),
-                TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=3)
+                TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
+                TerminateOnNaN()
             ],
             batch_size=1,
             use_multiprocessing=True
@@ -127,7 +131,8 @@ async def runTraining():
         callbacks=[
             ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
             EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
-            TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2)
+            TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
+            TerminateOnNaN()
         ],
         use_multiprocessing=True
     )
