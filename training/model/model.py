@@ -1,96 +1,69 @@
 import keras
 from keras import layers
+from keras.layers import Conv2D, Input, ReLU, BatchNormalization, Concatenate, Dropout, Conv2DTranspose, Concatenate, Conv2DTranspose
 from keras_tuner import HyperParameters
-import tensorflow as tf
 
 def TrainModel(hp: HyperParameters): 
     # Camada de Entrada
     loss = hp.Choice('loss', ['BinaryCrossentropy'])
     optimizer = hp.Choice('optimizer', ['Adam'])
-    activation = hp.Choice("activation", ["relu"])
+    # activation = hp.Choice("activation", ["relu"])
     activation_end = hp.Choice("activation_end", ["sigmoid"])
-    pooling = hp.Choice('pooling', ['MaxPooling2D'])
+    pooling = hp.Choice('pooling', ['MaxPooling2D', 'AveragePooling2D'])
+    # upscale = hp.Choice('upscale', ['Conv2DTranspose'])
     learning_rate = hp.Choice('learning_rate', values=[0.001])
-
-    hp_filters_1 = hp.Int('filters_1', min_value=16, max_value=32 , step=16)
-    hp_filters_2 = hp.Int('filters_2', min_value=32, max_value=64 , step=32)
-    hp_filters_3 = hp.Int('filters_3', min_value=64, max_value=128 , step=64)
-    hp_filters_4 = hp.Int('filters_4', min_value=128, max_value=256 , step=128)
-    hp_filters_5 = hp.Int('filters_5', min_value=256, max_value=512 , step=256)
+    kernel_initializer = hp.Choice('kernel_initializer', ['he_normal'])
     hp_kernel_size = hp.Int('kernel_size', min_value=3, max_value=7, step=2)
+    hp_dropout = hp.Float('dropout_rate', 0.1, 0.5, step=0.1)
     
-    # hp_regularizer = hp.Choice("regularizer", ['l1', 'l2'])
-    # hp_momentum = hp.Float("momentum", 0.9, 0.99, step=0.03)
-    hp_dropout = hp.Float('dropout_rate', 0.2, 0.5, step=0.1)
     
-    inputs = layers.Input(shape=(768, 512, 4))
+    def down_block(x, filters: int, use_maxpool=True):
+        x = Conv2D(filters, hp_kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        x = Conv2D(filters, hp_kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        if use_maxpool:
+            return getattr(layers, str(pooling))((2, 2))(x), x
+        return x
     
-    c1 = layers.Conv2D(hp_filters_1, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv1_1')(inputs)
-    c1 = layers.Dropout(hp_dropout)(c1)
-    c1 = layers.BatchNormalization()(c1)
-    c1 = layers.Conv2D(hp_filters_1, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv1_2')(c1)
-    p1 = getattr(layers, pooling)((2, 2))(c1) # type: ignore
-
-    c2 = layers.Conv2D(hp_filters_2, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv2_1')(p1)
-    c2 = layers.Dropout(hp_dropout)(c2)
-    c2 = layers.BatchNormalization()(c2)
-    c2 = layers.Conv2D(hp_filters_2, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv2_2')(c2)
-    p2 = getattr(layers, pooling)((2, 2))(c2) # type: ignore
+    def up_block(x, y, filters):
+        x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
+        x = Concatenate(axis= 3)([x, y])
+        x = Conv2D(filters, hp_kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        x = Conv2D(filters, hp_kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        return x
     
-    c3 = layers.Conv2D(hp_filters_3, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv3_1')(p2)
-    c3 = layers.Dropout(hp_dropout)(c3)
-    c3 = layers.BatchNormalization()(c3)
-    c3 = layers.Conv2D(hp_filters_3, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv3_2')(c3)
-    p3 = getattr(layers, pooling)((2, 2))(c3) # type: ignore
+    filter = [32, 64, 128, 256, 512]
+    # encode
+    input = Input(shape=(768, 512, 4))
+    x, temp1 = down_block(input, filter[0]) # type: ignore
+    x, temp2 = down_block(x, filter[1]) # type: ignore
+    x, temp3 = down_block(x, filter[2]) # type: ignore
+    x, temp4 = down_block(x, filter[3]) # type: ignore
     
-    c4 = layers.Conv2D(hp_filters_4, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv4_1')(p3)
-    c4 = layers.Dropout(hp_dropout)(c4)
-    c4 = layers.BatchNormalization()(c4)
-    c4 = layers.Conv2D(hp_filters_4, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv4_2')(c4)
-    p4 = getattr(layers, pooling)((2, 2))(c4) # type: ignore
+    x = down_block(x, filter[4], use_maxpool = False)
     
-    c5 = layers.Conv2D(hp_filters_5, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv5_1')(p4)
-    c5 = layers.Dropout(hp_dropout)(c5)
-    c5 = layers.BatchNormalization()(c5)
-    c5 = layers.Conv2D(hp_filters_5, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv5_2')(c5)
-
-    #Expansive path 
-    u6 = layers.Conv2DTranspose(hp_filters_4, (2, 2), strides=(2, 2), padding='same')(c5)
-    u6 = layers.concatenate([u6, c4])
-    c6 = layers.Conv2D(hp_filters_4, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv6_1')(u6)
-    c6 = layers.Dropout(hp_dropout)(c6)
-    c6 = layers.BatchNormalization()(c6)
-    c6 = layers.Conv2D(hp_filters_4, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv6_2')(c6)
+    # decode 
+    x = up_block(x, temp4, filter[3])
+    x = up_block(x, temp3, filter[2])
+    x = up_block(x, temp2, filter[1])
+    x = up_block(x, temp1, filter[0])
+    x = Dropout(hp_dropout)(x)
     
-    u7 = layers.Conv2DTranspose(hp_filters_3, (2, 2), strides=(2, 2), padding='same')(c6)
-    u7 = layers.concatenate([u7, c3])
-    c7 = layers.Conv2D(hp_filters_3, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv7_1')(u7)
-    c7 = layers.Dropout(hp_dropout)(c7)
-    c7 = layers.BatchNormalization()(c7)
-    c7 = layers.Conv2D(hp_filters_3, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv7_2')(c7)
+    output = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(x)
     
-    u8 = layers.Conv2DTranspose(hp_filters_2, (2, 2), strides=(2, 2), padding='same')(c7)
-    u8 = layers.concatenate([u8, c2])
-    c8 = layers.Conv2D(hp_filters_2, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv8_1')(u8)
-    c8 = layers.Dropout(hp_dropout)(c8)
-    c8 = layers.BatchNormalization()(c8)
-    c8 = layers.Conv2D(hp_filters_2, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv8_2')(c8)
-    
-    u9 = layers.Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same')(c8)
-    u9 = layers.concatenate([u9, c1], axis=3)
-    c9 = layers.Conv2D(hp_filters_1, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv9_1')(u9)
-    c9 = layers.Dropout(hp_dropout)(c9)
-    c9 = layers.BatchNormalization()(c9)
-    c9 = layers.Conv2D(hp_filters_1, hp_kernel_size, activation=activation, kernel_initializer='he_normal', padding='same', name='conv9_2')(c9)
-    
-    outputs = layers.Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(c9)
-    
-    model = keras.Model(inputs=[inputs], outputs=[outputs])
+    model = keras.Model(input, output, name='u-net')
     
     # Camada de saída
     model.compile(
-        loss = getattr(keras.losses, loss)(), # type: ignore
-        optimizer = getattr(keras.optimizers, optimizer)(learning_rate), # type: ignore
+        loss = getattr(keras.losses, str(loss))(),
+        optimizer = getattr(keras.optimizers, str(optimizer))(learning_rate),
         metrics=['accuracy']
     )
     model.summary()
@@ -98,74 +71,65 @@ def TrainModel(hp: HyperParameters):
     return model
 
 def LoaderModel():
-    inputs = layers.Input(shape=(768, 512, 4))
-    
-    c1 = layers.Conv2D(8, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv1_1')(inputs)
-    c1 = layers.Dropout(0.4)(c1)
-    c1 = layers.BatchNormalization()(c1)
-    c1 = layers.Conv2D(8, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv1_2')(c1)
-    p1 = layers.MaxPooling2D((2, 2))(c1) # type: ignore
+    # ID: 347 - val_accuracy: 0.87415 | 32 | 64 | 128 | 256 | 512 | 256 | 64 | 32 - 3 / 0.4
+    loss = 'BinaryCrossentropy'
+    optimizer = 'Adam'
 
-    c2 = layers.Conv2D(16, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv2_1')(p1)
-    c2 = layers.Dropout(0.4)(c2)
-    c2 = layers.BatchNormalization()(c2)
-    c2 = layers.Conv2D(16, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv2_2')(c2)
-    p2 = layers.MaxPooling2D((2, 2))(c2)
+    filter = [32, 64, 128, 256, 512]
+    learning_rate = 0.001
+    kernel_size = 3
+    dropout = 0.2
     
-    c3 = layers.Conv2D(32, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv3_1')(p2)
-    c3 = layers.Dropout(0.4)(c3)
-    c3 = layers.BatchNormalization()(c3)
-    c3 = layers.Conv2D(32, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv3_2')(c3)
-    p3 = layers.MaxPooling2D((2, 2))(c3)
-    
-    c4 = layers.Conv2D(128, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv4_1')(p3)
-    c4 = layers.Dropout(0.4)(c4)
-    c4 = layers.BatchNormalization()(c4)
-    c4 = layers.Conv2D(128, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv4_2')(c4)
-    p4 = layers.MaxPooling2D((2, 2))(c4)
-    
-    c5 = layers.Conv2D(384, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv5_1')(p4)
-    c5 = layers.Dropout(0.4)(c5)
-    c5 = layers.BatchNormalization()(c5)
-    c5 = layers.Conv2D(384, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv5_2')(c5)
+    kernel_initializer = 'he_normal'
+    activation_end = 'sigmoid'
+    pooling = 'MaxPooling2D'
 
-    #Expansive path 
-    u6 = layers.Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(c5)
-    u6 = layers.concatenate([u6, c4])
-    c6 = layers.Conv2D(128, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv6_1')(u6)
-    c6 = layers.Dropout(0.4)(c6)
-    c6 = layers.BatchNormalization()(c6)
-    c6 = layers.Conv2D(128, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv6_2')(c6)
+    def down_block(x, filters: int, use_maxpool=True):
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        if use_maxpool:
+            return getattr(layers, str(pooling))((2, 2))(x), x
+        return x
     
-    u7 = layers.Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same')(c6)
-    u7 = layers.concatenate([u7, c3])
-    c7 = layers.Conv2D(32, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv7_1')(u7)
-    c7 = layers.Dropout(0.4)(c7)
-    c7 = layers.BatchNormalization()(c7)
-    c7 = layers.Conv2D(32, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv7_2')(c7)
+    def up_block(x, y, filters):
+        x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
+        x = Concatenate(axis= 3)([x, y])
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+        return x
     
-    u8 = layers.Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same')(c7)
-    u8 = layers.concatenate([u8, c2])
-    c8 = layers.Conv2D(16, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv8_1')(u8)
-    c8 = layers.Dropout(0.4)(c8)
-    c8 = layers.BatchNormalization()(c8)
-    c8 = layers.Conv2D(16, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv8_2')(c8)
+    # encode
+    input = Input(shape=(768, 512, 4))
+    x, temp1 = down_block(input, filter[0]) # type: ignore
+    x, temp2 = down_block(x, filter[1]) # type: ignore
+    x, temp3 = down_block(x, filter[2]) # type: ignore
+    x, temp4 = down_block(x, filter[3]) # type: ignore
     
-    u9 = layers.Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same')(c8)
-    u9 = layers.concatenate([u9, c1], axis=3)
-    c9 = layers.Conv2D(8, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv9_1')(u9)
-    c9 = layers.Dropout(0.4)(c9)
-    c9 = layers.BatchNormalization()(c9)
-    c9 = layers.Conv2D(8, 3, activation='relu', kernel_initializer='he_normal', padding='same', name='conv9_2')(c9)
-
-    outputs = layers.Conv2D(4, (1, 1), activation='sigmoid', dtype='float32')(c9)
+    x = down_block(x, filter[4], use_maxpool = False)
     
-    model = keras.Model(inputs=[inputs], outputs=[outputs])
+    # decode 
+    x = up_block(x, temp4, filter[3])
+    x = up_block(x, temp3, filter[2])
+    x = up_block(x, temp2, filter[1])
+    x = up_block(x, temp1, filter[0])
+    x = Dropout(dropout)(x)
+    
+    output = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(x)
+    
+    model = keras.Model(input, output, name='u-net')
     
     # Camada de saída
     model.compile(
-        loss=keras.losses.BinaryCrossentropy(), # type: ignore
-        optimizer = keras.optimizers.Adam(0.001), # type: ignore
+        loss = getattr(keras.losses, str(loss))(),
+        optimizer = getattr(keras.optimizers, str(optimizer))(learning_rate),
         metrics=['accuracy']
     )
     model.summary()

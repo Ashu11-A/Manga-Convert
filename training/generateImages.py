@@ -1,4 +1,5 @@
 import os
+from pickle import TRUE
 import numpy as np
 from PIL import Image
 from model.getData import DataLoader
@@ -42,7 +43,14 @@ loader = DataLoader()
 async def processFiles():
     files = await loader.ListFiles(path)
     if files is not None:
-        [resize_images(filePath) for filePath in files]
+        for filePath in files:
+            if (
+                not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", ".npz")) == True
+                and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert.npz")) == True
+            ):
+                resize_images(filePath)
+            else:
+                print(f"Já existe: {filePath}")
     else:
         print('Nenhum Arquivo Encontrado!')
 

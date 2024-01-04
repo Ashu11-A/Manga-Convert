@@ -1,21 +1,31 @@
 import { loadGraphModel } from "@tensorflow/tfjs-converter";
 import * as tf from "@tensorflow/tfjs-node"; // Import everything for convenience
-import { writeFile } from "fs";
+import { existsSync, mkdir, mkdirSync, writeFile } from "fs";
 import sizeOf from "image-size";
 import sharp from "sharp";
 import { FilesLoader } from "./model/getData";
+import path from 'path';
+import { table } from 'table'
 
 export async function testRun() {
   const totalModel = await FilesLoader.countFolders("models");
   const model = await loadGraphModel(
     `file://models/my-model-${totalModel}/model.json`
   );
-
+  const data = [
+    ['Model', 'Shape', 'dType'],
+    [totalModel, model.inputs[0].shape, model.inputs[0].dtype],
+  ];
+  const dataProcess = [['Image', 'Size', 'Shape', 'dType']]
+  const tableScren = table(data)
+  console.log(tableScren)
+  
   const { imagens } = await FilesLoader.carregarDados({
     diretorioImagens: "./dados/teste/train",
     diretorioMascaras: "./dados/teste/validation",
+    onlyTest: true
   });
-
+  
   for (const [currentImage, img] of imagens.entries()) {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) continue; // Skip invalid images
@@ -24,19 +34,19 @@ export async function testRun() {
     const inputImage  = tf.node.decodeImage(img, 4)
     const preProcessedImage = tf.image.resizeBilinear(inputImage, [768, 512])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
-
+    
     const normalizedInputs = tf.tidy(() => {
       const dataMax = inputTensor.max();
       const dataMin = inputTensor.min();
       return inputTensor.sub(dataMin).div(dataMax.sub(dataMin));
     });
-
+    
     // console.log(normalizedInputs.dataSync())
-
+    
     const imgTensor = tf.stack([normalizedInputs]);
-    console.log(imgTensor.shape, imgTensor.dtype)
-
+    
     const prediction = model.predict(imgTensor);
+    dataProcess.push([String(currentImage), `${height},${width}`, String(imgTensor.shape), String(imgTensor.dtype)])
     let pred3d: tf.Tensor3D;
     
     if (prediction instanceof tf.Tensor) {
@@ -53,11 +63,14 @@ export async function testRun() {
         return pred3d.sub(dataMin).div(dataMax.sub(dataMin));
       });
     }
-
+    
     const pixelsUint8 = await tf.browser.toPixels(pred3d)
-    // const Uint8Array = new Uint8ClampedArray(pred3d.dataSync().map(value => Math.round(value * 255)))
-    // const dataBuffer = pred3d.dataSync()
+    // const pixelsUint8 = new Uint8ClampedArray(pred3d.dataSync().map(value => Math.round(value * 255)))
+    // const pixelsUint8 = pred3d.dataSync()
+
+    // Converter Imagem original em buffer
     const image = await sharp(img).toBuffer()
+    // Fazer a mascara que será aplicada a imagem original
     const mask = await sharp(pixelsUint8, {
       raw: {
         width: pred3d.shape[1],
@@ -65,25 +78,30 @@ export async function testRun() {
         channels: 4,
       },
     })
-      .threshold(200)
-      .resize({ width, height, fit: 'fill' })
-      .png()
-      .toBuffer()
-      // .png()
-      // .toFile(`test/prediction-${currentImage}-test.png`);
+    // .threshold(200)
+    .resize({ width, height, fit: 'fill' })
+    .png()
+    .toBuffer()
+    
+    // Cria o diretorio para salvar as imagens
+    if (!existsSync(path.join('model-test', String(totalModel)))) {
+      mkdirSync(path.join('model-test', String(totalModel)));
+    }
 
-      await sharp(image)
-        .composite([{ input: mask, blend: "dest-in", gravity: "northwest" }])
-        // Set the output format and write to a file
-        .png()
-        .toFile(`test/prediction-${currentImage}-test.png`)
-
-    writeFile(`test/prediction-${currentImage}-train.png`, img, (err) => {
-      if (err) console.error(err); // Use console.error for errors
+    // Aplica a mascara
+    await sharp(image)
+    .composite([{ input: mask, blend: "dest-in", gravity: "northwest" }])
+    .png()
+    .toFile(`model-test/${totalModel}/prediction-${currentImage}-test.png`)
+    
+    writeFile(`model-test/${totalModel}/prediction-${currentImage}-train.png`, img, (err) => {
+      if (err) console.error(err)
     });
-    writeFile(`test/prediction-${currentImage}-preview.png`, mask, (err) => {
-      if (err) console.error(err); // Use console.error for errors
+    writeFile(`model-test/${totalModel}/prediction-${currentImage}-preview.png`, mask, (err) => {
+      if (err) console.error(err)
     });
   }
+  const tableScren2 = table(dataProcess)
+  console.log(tableScren2)
 }
 testRun();

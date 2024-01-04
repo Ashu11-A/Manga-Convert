@@ -5,11 +5,12 @@ export class FilesLoader {
   public static async carregarDados(options: {
     diretorioImagens: string;
     diretorioMascaras: string;
+    onlyTest?: boolean
   }): Promise<{
     imagens: Buffer[];
     mascaras: Buffer[];
   }> {
-    const { diretorioImagens, diretorioMascaras } = options;
+    const { diretorioImagens, diretorioMascaras, onlyTest } = options;
     const imagens: Buffer[] = [];
     const mascaras: Buffer[] = [];
 
@@ -26,10 +27,12 @@ export class FilesLoader {
           imagens.push(imagemBuffer);
 
           // Construir o caminho para a máscara correspondente
-          const mascaraBuffer = readFileSync(
-            fullPath.replace("train", "validation")
-          );
-          mascaras.push(mascaraBuffer);
+          if (onlyTest !== true) {
+            const mascaraBuffer = readFileSync(
+              fullPath.replace("train", "validation")
+            );
+            mascaras.push(mascaraBuffer);
+          }
         }
       });
     }

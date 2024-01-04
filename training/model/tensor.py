@@ -5,6 +5,7 @@ import keras
 from PIL import Image
 import numpy as np
 from memory_profiler import profile
+from tqdm import tqdm
 
 class TensorLoader:
     def convert_to_tensor(self, inputs: list[str], labels: list[str]):
@@ -46,12 +47,14 @@ class TensorLoader:
             # decode_img_1 | (387, 768, 512, 4) | 7780.8
             # decode_img_2 | (386, 768, 512, 4) | 8043.0
             # decode_img_4 | (387, 768, 512, 4) | 7758.4
-            decoded_images = [tf.expand_dims(decode_images(img), axis=0) for img in imgList]
+            decoded_images = [tf.expand_dims(decode_images(img), axis=0) for img in tqdm(imgList)]
             decoded_images = tf.concat(decoded_images, 0)
             return decoded_images
 
         with tf.device('/CPU:0'): # type: ignore
-            label_resized = processImages(labels)
+            print('Carregando Imagens...')
             input_resized = processImages(inputs)
+            print('Carregando Mascaras...')
+            label_resized = processImages(labels)
 
             return input_resized, label_resized

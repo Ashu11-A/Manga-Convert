@@ -13,8 +13,20 @@ import keras_tuner as kt
 import argparse
 
 async def runTraining():
+    # Aumentar artificalmente a memoria vRam da GPU
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            tf.config.set_logical_device_configuration(
+                gpus[0],
+                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+            logical_gpus = tf.config.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            print(e)
+            
     # Debugging
-    # tf.debugging.set_log_device_placement(True)
+    tf.debugging.set_log_device_placement(True)
     
     seed = 4605
     tf.random.set_seed(seed)
@@ -36,17 +48,6 @@ async def runTraining():
     logs = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tf.profiler.experimental.Profile(logdir=logs)
 
-    # Aumentar artificalmente a memoria vRam da GPU
-        # gpus = tf.config.list_physical_devices('GPU')
-        # if gpus:
-        #     try:
-        #         tf.config.set_logical_device_configuration(
-        #             gpus[0],
-        #             [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
-        #         logical_gpus = tf.config.list_logical_devices('GPU')
-        #         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        #     except RuntimeError as e:
-        #         print(e)
 
     markDir = 'dados_cache/treino/train'
     loaderFiles = DataLoader()
@@ -73,12 +74,13 @@ async def runTraining():
     # Embaralha as coisas
     dataset = dataset.shuffle(DATASET_SIZE)
     # Tamanho do conjunto de treinamento e validação
-    N_TRAIN = int(0.8 * DATASET_SIZE)
-    N_VALIDATION = int(0.2 * DATASET_SIZE)
-    BATCH_SIZE = 1
+    N_TRAIN = int(0.7 * DATASET_SIZE)
+    N_VALIDATION = int(0.3 * DATASET_SIZE)
+    BATCH_SIZE = 4
+
     # Divida o conjunto de dados em treinamento e validação
-    validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).cache()
-    train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).cache()
+    validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     print(f"Treinamento: {N_TRAIN}")
     print(f"Validadores: {N_VALIDATION}")
 
@@ -99,7 +101,6 @@ async def runTraining():
             validation_data=validate_ds,
             callbacks=[
                 EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
-                EarlyStopping(monitor='val_loss', patience=20, verbose=1),
                 TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
                 TerminateOnNaN()
             ],
@@ -130,9 +131,9 @@ async def runTraining():
         batch_size=1,
         callbacks=[
             ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
-            EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
+            EarlyStopping(monitor='val_accuracy', patience=25, verbose=1),
             TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
-            TerminateOnNaN()
+            # TerminateOnNaN()
         ],
         use_multiprocessing=True
     )
