@@ -1,0 +1,12 @@
+{
+    "port": 3009,
+    "default": {
+        "quality": 80
+    },
+    "compress": {
+        "minCompressLength": 1024
+    },
+    "tensorflow": {
+        "bestModel": 391
+    }
+}

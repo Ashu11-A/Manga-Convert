@@ -5,9 +5,8 @@
   "start": "index.ts",
   "scripts": {
     "start": "node .",
-    "training": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin training/index.ts",
-    "test": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin test/test.ts",
-    "dev": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin src/index.ts",
+    "start:test": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin test/test.ts",
+    "start:dev": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin src/index.ts",
     "build": "tsc && tscpaths -p tsconfig.json -s ./src -o ./dist",
     "lint": "eslint --ext .tsx,.ts --fix ./src -c .eslintrc.json"
   },
@@ -26,16 +25,21 @@
     "@tensorflow/tfjs-converter": "^4.15.0",
     "@tensorflow/tfjs-node": "^4.15.0",
     "@tensorflow/tfjs-node-gpu": "^4.15.0",
+    "@types/lodash": "^4.14.202",
+    "axios": "^1.6.5",
     "color": "^4.2.3",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-http-proxy": "^2.0.0",
     "fs": "^0.0.1-security",
+    "http-proxy-middleware": "^2.0.6",
     "image-size": "^1.0.2",
     "jimp": "^0.3.5",
+    "lodash": "^4.17.21",
     "node-pre-gyp": "^0.17.0",
     "pngjs": "^7.0.0",
     "sharp": "^0.33.1",
+    "table": "^6.8.1",
     "tslib": "^2.6.2"
   },
   "devDependencies": {

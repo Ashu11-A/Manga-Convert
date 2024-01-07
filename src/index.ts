@@ -1,9 +1,10 @@
-import express from 'express'
-import proxy from 'express-http-proxy'
-const app = express()
+import { App } from "./app";
+import settings from './settings.json'
 
-app.get('/', proxy('https://www.google.com.br/'))
+const app = new App()
 
-app.listen(3000, () => {
-    console.log('Estou na rodando em: http://localhost:3000')
+app.server.enable('trust proxy')
+
+app.server.listen(settings.port, () => {
+  console.log(`Servidor listado em http://localhost:${settings.port}`)
 })
