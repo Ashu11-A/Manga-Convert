@@ -1,9 +1,9 @@
-import keras
-from keras import layers
-from keras.layers import Conv2D, Input, ReLU, BatchNormalization, Concatenate, Dropout, Conv2DTranspose, Concatenate, Conv2DTranspose
+import tf_keras as keras
+from tf_keras import layers
+from tf_keras.layers import Conv2D, Input, ReLU, BatchNormalization, concatenate, Dropout, Conv2DTranspose, Conv2DTranspose
 from keras_tuner import HyperParameters
 
-def TrainModel(hp: HyperParameters): 
+def FindModel(hp: HyperParameters): 
     # Camada de Entrada
     loss = hp.Choice('loss', ['BinaryCrossentropy'])
     optimizer = hp.Choice('optimizer', ['Adam'])
@@ -13,7 +13,7 @@ def TrainModel(hp: HyperParameters):
     # upscale = hp.Choice('upscale', ['Conv2DTranspose'])
     learning_rate = hp.Choice('learning_rate', values=[0.001])
     kernel_initializer = hp.Choice('kernel_initializer', ['he_normal'])
-    hp_kernel_size = hp.Int('kernel_size', min_value=3, max_value=7, step=2)
+    hp_kernel_size = hp.Choice('kernel_size', values=[3])
     hp_dropout = hp.Float('dropout_rate', 0.1, 0.5, step=0.1)
     
     
@@ -30,7 +30,7 @@ def TrainModel(hp: HyperParameters):
     
     def up_block(x, y, filters):
         x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
-        x = Concatenate(axis= 3)([x, y])
+        x = concatenate([x, y])
         x = Conv2D(filters, hp_kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
@@ -71,11 +71,15 @@ def TrainModel(hp: HyperParameters):
     return model
 
 def LoaderModel():
-    # ID: 347 - val_accuracy: 0.87415 | 32 | 64 | 128 | 256 | 512 | 256 | 64 | 32 - 3 / 0.4
+    # ID: 347 - val_accuracy: [0.87415] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.4
+    # ID: 382 - val_accuracy: [0.90806] | filter: [32, 64, 128, 256, 512] - kernel_size: 7 / 0.2
+    # ID: 383 - val_accuracy: [0.89926] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
+    # ID: 385 - val_accuracy: [0.89182] | filter: [32, 64, 128, 256, 512] - kernel_size: 7 / 0.4
+    # ID: 399 - val_accuracy: [0.90410] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
     loss = 'BinaryCrossentropy'
     optimizer = 'Adam'
 
-    filter = [32, 64, 128, 256, 512]
+    filter = [16, 32, 64, 128, 256, 512]
     learning_rate = 0.001
     kernel_size = 3
     dropout = 0.2
@@ -97,7 +101,7 @@ def LoaderModel():
     
     def up_block(x, y, filters):
         x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
-        x = Concatenate(axis= 3)([x, y])
+        x = concatenate([x, y])
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
@@ -106,16 +110,19 @@ def LoaderModel():
         x = ReLU()(x)
         return x
     
+    filter = [16, 32, 64, 128, 256, 512]
     # encode
     input = Input(shape=(768, 512, 4))
     x, temp1 = down_block(input, filter[0]) # type: ignore
     x, temp2 = down_block(x, filter[1]) # type: ignore
     x, temp3 = down_block(x, filter[2]) # type: ignore
     x, temp4 = down_block(x, filter[3]) # type: ignore
+    x, temp5 = down_block(x, filter[4]) # type: ignore
     
-    x = down_block(x, filter[4], use_maxpool = False)
+    x = down_block(x, filter[5], use_maxpool = False)
     
     # decode 
+    x = up_block(x, temp5, filter[4])
     x = up_block(x, temp4, filter[3])
     x = up_block(x, temp3, filter[2])
     x = up_block(x, temp2, filter[1])

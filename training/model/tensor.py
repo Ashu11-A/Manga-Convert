@@ -1,7 +1,7 @@
 import datetime
 from typing import List
 import tensorflow as tf
-import keras
+import tf_keras as keras
 from PIL import Image
 import numpy as np
 from memory_profiler import profile

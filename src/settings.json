@@ -1,5 +1,6 @@
 {
     "port": 3009,
+    "host": "0.0.0.0",
     "default": {
         "quality": 80
     },
@@ -7,6 +8,6 @@
         "minCompressLength": 1024
     },
     "tensorflow": {
-        "bestModel": 391
+        "bestModel": 382
     }
 }

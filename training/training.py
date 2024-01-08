@@ -1,34 +1,36 @@
 import asyncio
+import numpy as np
 import tensorflow as tf
 import tensorflowjs as tfjs
-import keras
+import tf_keras as keras
 from model.getData import DataLoader
 from model.tensor import TensorLoader
-from model.model import TrainModel, LoaderModel
+from model.model import FindModel, LoaderModel
 import json
 from datetime import datetime
-from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN
+from tf_keras import backend as K
+from tf_keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN, LambdaCallback, ReduceLROnPlateau, ProgbarLogger, BackupAndRestore
 import keras_tuner as kt
 import argparse
+import matplotlib.pyplot as plt
 
 async def runTraining():
     # Aumentar artificalmente a memoria vRam da GPU
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
-            logical_gpus = tf.config.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            print(e)
+        # gpus = tf.config.list_physical_devices('GPU')
+        # if gpus:
+        #     try:
+        #         tf.config.set_logical_device_configuration(
+        #             gpus[0],
+        #             [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+        #         logical_gpus = tf.config.list_logical_devices('GPU')
+        #         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        #     except RuntimeError as e:
+        #         print(e)
             
     # Debugging
-    tf.debugging.set_log_device_placement(True)
+    # tf.debugging.set_log_device_placement(True)
     
-    seed = 4605
+    seed = 319
     tf.random.set_seed(seed)
     
     print("TensorFlow version: ", tf.version)
@@ -66,6 +68,7 @@ async def runTraining():
     
     parser = argparse.ArgumentParser(description='Treinamento de modelo')
     parser.add_argument('--best', action='store_true', help='Se o treinamento deve achar o melhor resultado')
+    parser.add_argument('--model', type=str, help='Modelo')
     args = parser.parse_args()
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
@@ -74,21 +77,42 @@ async def runTraining():
     # Embaralha as coisas
     dataset = dataset.shuffle(DATASET_SIZE)
     # Tamanho do conjunto de treinamento e validação
-    N_TRAIN = int(0.7 * DATASET_SIZE)
-    N_VALIDATION = int(0.3 * DATASET_SIZE)
-    BATCH_SIZE = 4
+    N_TRAIN = int(0.8 * DATASET_SIZE)
+    N_VALIDATION = int(0.2 * DATASET_SIZE)
+    BATCH_SIZE = 8
 
     # Divida o conjunto de dados em treinamento e validação
     validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     print(f"Treinamento: {N_TRAIN}")
     print(f"Validadores: {N_VALIDATION}")
+    
+    def display(display_list):
+        plt.figure(figsize=(15, 15))
+        title = ["Input Image", "True Mask", "Predicted Mask"]
+        
+        for i in range(len(display_list)):
+            plt.subplot(1, len(display_list), i+1)
+            plt.figure(facecolor='black')
+            plt.title(title[i])
+            plt.imshow(keras.utils.array_to_img(display_list[i]))
+            plt.axis('off')
+        plt.savefig('./teste.png')
+    sample_batch = next(iter(train_ds))
+    random_index = np.random.choice(sample_batch[0].shape[0])
+    sample_image, sample_mask = sample_batch[0][random_index], sample_batch[1][random_index]
+    display([sample_image, sample_mask])
 
-    if args.best:
+    if args.model:
+        model = keras.models.load_model(F"models/my-model-{args.model}/checkpoints/chief/ckpt-39.data-00000-of-00001")
+        if model is None:
+            print('Não existe um checkpoint!')
+            return
+    elif args.best:
         print('Iniciando procura do melhor modelo!')
         
         tuner = kt.Hyperband(
-            TrainModel,
+            FindModel,
             objective='val_accuracy',
             max_epochs=100,
             factor=3,
@@ -133,7 +157,9 @@ async def runTraining():
             ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
             EarlyStopping(monitor='val_accuracy', patience=25, verbose=1),
             TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
-            # TerminateOnNaN()
+            TerminateOnNaN(),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.25, patience=5, cooldown=5, min_lr=0.000000001),
+            BackupAndRestore(f'models/my-model-{totalModel}/checkpoints')
         ],
         use_multiprocessing=True
     )

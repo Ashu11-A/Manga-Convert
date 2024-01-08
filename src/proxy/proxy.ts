@@ -6,10 +6,15 @@ import { compress } from "../compress/compress";
 import https from "https";
 import { pick } from "lodash";
 import { removeBackground } from "@/tensorflow/processImg";
+import sharp from "sharp";
+
+sharp.cache(false);
+sharp.concurrency(4);
+sharp.simd(true);
 
 export async function proxy(req: Request, res: Response) {
   try {
-    console.log(`Imagem recebida ${req.params.url}`);
+    console.log(`Request: ${req.params.url}`);
     const response = await axios.get(req.params.url, {
       ...pick(req.headers, ["cookie", "dnt", "referer"]),
       headers: {
@@ -17,24 +22,28 @@ export async function proxy(req: Request, res: Response) {
         "x-forwarded-for": req.headers["x-forwarded-for"] || req.ip,
         via: "1.0 - beta Manga Convert",
       },
-      timeout: 10000,
+      timeout: 30000,
       maxRedirects: 5,
+      maxContentLength: 10485760, // 10Mb
       responseType: "arraybuffer",
       httpsAgent: new https.Agent({ rejectUnauthorized: false }),
     });
 
-    const buffer = Buffer.from(response.data);
+    const buffer = await sharp(Buffer.from(response.data)).png().toBuffer();
+    if (buffer.length === 0) throw new Error('Imagem Invalida')
+  
     copyHeaders(response, res);
     res.setHeader("content-encoding", "identity");
     req.params.originType = response.headers["content-type"] || "";
     req.params.originSize = buffer.length.toString();
 
-    const imageProcessed = await removeBackground(buffer)
-    req.params.tensorflowSize = imageProcessed?.length.toString() ?? '0';
+    const imageProcessed = await removeBackground(buffer);
+    req.params.tensorflowSize = imageProcessed?.length.toString() ?? "0";
 
     await compress(req, res, imageProcessed ?? buffer);
+    imageProcessed?.fill(0)
+    buffer.fill(0)
   } catch (err) {
-    console.log(err);
     return redirect(req, res);
   }
 }

@@ -8,8 +8,6 @@ interface RequestMod extends Request {
 export function params (req: RequestMod, res: Response, next: NextFunction) {
     let url = req.query.url
 
-    console.log(url)
-
     if (Array.isArray(url)) url = url.join('&url=')
 
     if (!url || url === undefined) {
@@ -23,8 +21,6 @@ export function params (req: RequestMod, res: Response, next: NextFunction) {
         req.params.webp = !req.query.jpeg;
         req.params.grayscale = req.query.bw !== '0';
         req.params.quality = parseInt(String(req.query.l), 10) || settings.default.quality
-
-        console.log(req.params)
 
         next()
     }

@@ -5,6 +5,6 @@ const app = new App()
 
 app.server.enable('trust proxy')
 
-app.server.listen(settings.port, () => {
+app.server.listen(settings.port, settings.host, () => {
   console.log(`Servidor listado em http://localhost:${settings.port}`)
 })

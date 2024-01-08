@@ -1,4 +1,6 @@
+import { convertSize } from '@/functions/formatBytes';
 import { Response, Request } from 'express';
+import { table } from 'table';
 
 export async function bypass(req: Request, res: Response, buffer: Buffer): Promise<void> {
   try {
@@ -9,5 +11,7 @@ export async function bypass(req: Request, res: Response, buffer: Buffer): Promi
     res.end();
   } catch (err) {
     console.log("Erro no Bypass: \n" + err)
+  } finally {
+    buffer.fill(0)
   }
 }

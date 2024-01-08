@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from model.getData import DataLoader
 import asyncio
+from tqdm import tqdm
 
 def resize_images(path: str):
     image = Image.open(path)
@@ -43,7 +44,7 @@ loader = DataLoader()
 async def processFiles():
     files = await loader.ListFiles(path)
     if files is not None:
-        for filePath in files:
+        for filePath in tqdm(files):
             if (
                 not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", ".npz")) == True
                 and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert.npz")) == True

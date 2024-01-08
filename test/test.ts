@@ -7,6 +7,10 @@ import { FilesLoader } from "./model/getData";
 import path from 'path';
 import { table } from 'table'
 
+sharp.cache(false)
+sharp.concurrency(4)
+sharp.simd(true)
+
 export async function testRun() {
   const totalModel = await FilesLoader.countFolders("models");
   const model = await loadGraphModel(
