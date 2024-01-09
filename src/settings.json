@@ -9,5 +9,6 @@
     },
     "tensorflow": {
         "bestModel": 382
-    }
+    },
+    "debug": false
 }

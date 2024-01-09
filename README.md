@@ -2,8 +2,8 @@
 
 ### Requisitos
 
-- Nodejs v18.13.0
-- Python 3.7.9
+- Nodejs v18.18.0
+- Python 3.10.12
 
 ### Production
 

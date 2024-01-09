@@ -18,3 +18,5 @@ pyvenv.cfg
 bin
 lib
 .vscode/settings.json
+*.js
+dist/

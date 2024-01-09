@@ -1,17 +1,30 @@
 import { convertSize } from "@/functions/formatBytes";
 import { loaderModel } from "./loader";
 import settings from "@/settings.json";
-import * as tf from "@tensorflow/tfjs-node";
+import {
+  GraphModel,
+  Rank,
+  Tensor,
+  Tensor3D,
+  browser,
+  engine,
+  image,
+  node,
+  setBackend,
+  stack,
+  tidy,
+} from "@tensorflow/tfjs-node-gpu";
 import { existsSync } from "fs";
 import sizeOf from "image-size";
 import sharp from "sharp";
 import { table } from "table";
+import '@tensorflow/tfjs-backend-wasm';
 
 sharp.cache(false);
 sharp.concurrency(4);
 sharp.simd(true);
 const bestModel = settings.tensorflow.bestModel;
-let cachedModel: tf.GraphModel | undefined;
+let cachedModel: GraphModel
 
 export async function removeBackground(img: Buffer) {
   const memAntes = process.memoryUsage();
@@ -22,57 +35,48 @@ export async function removeBackground(img: Buffer) {
     return undefined;
   }
 
-  if (cachedModel === undefined) {
-    cachedModel = await loaderModel(bestModel);
+  if (cachedModel !== undefined) {
+    console.log("Modelo em cache");
   } else {
-    console.log("Modelo já carregado!");
+    cachedModel = await loaderModel(bestModel);
   }
+  
   try {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) return; // Skip invalid images
-    if (width < 512 || height < 768) {
-      console.log("Imagem muito pequena!");
-      return;
-    }
     // const imgResize = sharp(img).resize(512, 768)
 
-    const inputImage = tf.node.decodePng(img, 4);
-    const resizedImage = tf.image.resizeBilinear(inputImage, [768, 512]);
-    const normalizedInputs = tf.tidy(() =>
-      resizedImage.sub(resizedImage.min()).div(resizedImage.max().sub(resizedImage.min()))
-    );
+    const imgTensor = tidy(() => {
+      const inputImage = node.decodeImage(img, 4);
+      const resizedImage = image.resizeBilinear(inputImage, [768, 512]);
+      const normalizedInputs = resizedImage
+        .sub(resizedImage.min())
+        .div(resizedImage.max().sub(resizedImage.min()));
 
-    const imgTensor = tf.stack([normalizedInputs]);
+      return stack([normalizedInputs]);
+    });
 
-    const prediction = cachedModel.predict(imgTensor);
-    let pred3d: tf.Tensor3D;
+    const predict = async (input: Tensor<Rank>) => {
+      setBackend('tensorflow');
+      const output = await cachedModel.execute(input) as Tensor3D;
+      return output;
+    }    
 
-    if (prediction instanceof tf.Tensor) {
-      pred3d = prediction.squeeze([0]);
-    } else if (
-      typeof prediction === "object" &&
-      prediction !== null &&
-      Array.isArray(prediction)
-    ) {
-      pred3d = prediction[0].squeeze([0]);
-    } else {
-      throw new Error("prediction deve ser um Tensor ou um Tensor[]");
-    }
-    if (pred3d.max().dataSync()[0] > 1) {
-      pred3d = tf.tidy(() => {
-        return pred3d.sub(pred3d.min()).div(pred3d.max().sub(pred3d.min()));
-      });
+    let prediction = await predict(imgTensor) 
+      prediction = prediction.squeeze([0]);
+    if (prediction.max().dataSync()[0] > 1) {
+      prediction = prediction.sub(prediction.min()).div(prediction.max().sub(prediction.min()))
     }
 
-    const pixelsUint8 = await tf.browser.toPixels(pred3d);
+    const pixelsUint8 = await browser.toPixels(prediction as Tensor3D );
     // const pixelsUint8 = new Uint8ClampedArray(pred3d.dataSync().map(value => Math.round(value * 255)))
     // const pixelsUint8 = pred3d.dataSync()
 
     // Fazer a mascara que será aplicada a imagem original
     const mask = await sharp(pixelsUint8, {
       raw: {
-        width: pred3d.shape[1],
-        height: pred3d.shape[0],
+        width: prediction.shape[1] as number,
+        height: prediction.shape[0],
         channels: 4,
       },
     })
@@ -93,7 +97,6 @@ export async function removeBackground(img: Buffer) {
 
     const imageProcessed = await sharp(invertImage)
       .composite([{ input: maskedImage }])
-      .png()
       .toBuffer();
 
     console.log(
@@ -110,39 +113,42 @@ export async function removeBackground(img: Buffer) {
     [mask, invertImage, maskedImage, pixelsUint8].forEach((buffer) =>
       buffer.fill(0)
     );
-    [inputImage, normalizedInputs, imgTensor, prediction, pred3d].forEach(
-      (tensor) =>
-        Array.isArray(tensor)
-          ? tensor.map((tensor) => tensor.dispose())
-          : tensor.dispose()
+    [imgTensor, prediction].forEach((tensor) =>
+      Array.isArray(tensor)
+        ? tensor.map((tensor) => tensor.dispose())
+        : tensor.dispose()
     );
 
     const memDepois = process.memoryUsage();
-    console.log("Tensorflow Process Images View Memory Usage");
-    const tableData = [
-      ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
-      ["RSS", convertSize(memAntes.rss), convertSize(memDepois.rss)],
-      [
-        "Heap Total",
-        convertSize(memAntes.heapTotal),
-        convertSize(memDepois.heapTotal),
-      ],
-      [
-        "Heap Usado",
-        convertSize(memAntes.heapUsed),
-        convertSize(memDepois.heapUsed),
-      ],
-      [
-        "External",
-        convertSize(memAntes.external),
-        convertSize(memDepois.external),
-      ],
-    ];
-    console.log(table(tableData));
+
+    if (settings.debug === true) {
+      console.log("Tensorflow Process Images View Memory Usage");
+      const tableData = [
+        ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
+        ["RSS", convertSize(memAntes.rss), convertSize(memDepois.rss)],
+        [
+          "Heap Total",
+          convertSize(memAntes.heapTotal),
+          convertSize(memDepois.heapTotal),
+        ],
+        [
+          "Heap Usado",
+          convertSize(memAntes.heapUsed),
+          convertSize(memDepois.heapUsed),
+        ],
+        [
+          "External",
+          convertSize(memAntes.external),
+          convertSize(memDepois.external),
+        ],
+      ];
+      console.log(table(tableData));
+    }
 
     return imageProcessed;
   } catch (err) {
-    console.log('Erro ao processar imagens no Tensorflow');
+    console.log("Erro ao processar imagens no Tensorflow");
+    console.log(err);
     return;
   }
 }

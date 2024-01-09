@@ -5,6 +5,8 @@ import { shouldCompress } from "./shouldCompress";
 import { bypass } from "@/proxy/bypass";
 import { table } from "table";
 import { convertSize } from "@/functions/formatBytes";
+import { writeFile } from "fs";
+import settings from "@/settings.json";
 
 sharp.cache(false);
 sharp.concurrency(4);
@@ -62,63 +64,45 @@ export async function compress(
         );
         res.status(200);
         res.send(output);
+
+        writeFile(
+          `teste/prediction-${new Date().toISOString()}.png`,
+          output,
+          () => {
+            console.log("Erro ao salvar Imagem");
+          }
+        );
       }
-      output.fill(0);
     } else {
-      await bypass(req, res, input);
+      await bypass(res, input);
     }
   } catch (err) {
+    console.log('Erro na compactação')
     return redirect(req, res);
   } finally {
-    input.fill(0)
     const memDepois = process.memoryUsage();
-    console.log("Sharp Compress Images");
-    const tableData = [
-      ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
-      ["RSS", convertSize(memAntes.rss), convertSize(memDepois.rss)],
-      [
-        "Heap Total",
-        convertSize(memAntes.heapTotal),
-        convertSize(memDepois.heapTotal),
-      ],
-      [
-        "Heap Usado",
-        convertSize(memAntes.heapUsed),
-        convertSize(memDepois.heapUsed),
-      ],
-      [
-        "External",
-        convertSize(memAntes.external),
-        convertSize(memDepois.external),
-      ],
-    ];
-    console.log(table(tableData));
-    // if (global.gc) {
-    //   const memAntes = process.memoryUsage();
-    //   console.log("Solicitando ao gc para liberar a memória não utilizada");
-    //   global.gc();
-    //   const memDepois = process.memoryUsage();
-
-    //   const tableData = [
-    //     ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
-    //     ["RSS", convertSize(memAntes.rss), convertSize(memDepois.rss)],
-    //     [
-    //       "Heap Total",
-    //       convertSize(memAntes.heapTotal),
-    //       convertSize(memDepois.heapTotal),
-    //     ],
-    //     [
-    //       "Heap Usado",
-    //       convertSize(memAntes.heapUsed),
-    //       convertSize(memDepois.heapUsed),
-    //     ],
-    //     [
-    //       "External",
-    //       convertSize(memAntes.external),
-    //       convertSize(memDepois.external),
-    //     ],
-    //   ];
-    //   console.log(table(tableData));
-    // }
+    if (settings.debug === true) {
+      console.log("Sharp Compress Images");
+      const tableData = [
+        ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
+        ["RSS", convertSize(memAntes.rss), convertSize(memDepois.rss)],
+        [
+          "Heap Total",
+          convertSize(memAntes.heapTotal),
+          convertSize(memDepois.heapTotal),
+        ],
+        [
+          "Heap Usado",
+          convertSize(memAntes.heapUsed),
+          convertSize(memDepois.heapUsed),
+        ],
+        [
+          "External",
+          convertSize(memAntes.external),
+          convertSize(memDepois.external),
+        ],
+      ];
+      console.log(table(tableData));
+    }
   }
 }
