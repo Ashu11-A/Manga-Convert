@@ -21,8 +21,7 @@ export async function testRun() {
     [totalModel, model.inputs[0].shape, model.inputs[0].dtype],
   ];
   const dataProcess = [['Image', 'Size', 'Shape', 'dType']]
-  const tableScren = table(data)
-  console.log(tableScren)
+  console.log(table(data))
   
   const { imagens } = await FilesLoader.carregarDados({
     diretorioImagens: "./dados/teste/train",
@@ -44,8 +43,7 @@ export async function testRun() {
       const dataMin = inputTensor.min();
       return inputTensor.sub(dataMin).div(dataMax.sub(dataMin));
     });
-    
-    // console.log(normalizedInputs.dataSync())
+
     
     const imgTensor = tf.stack([normalizedInputs]);
     

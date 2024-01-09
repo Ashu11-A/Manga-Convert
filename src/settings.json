@@ -10,5 +10,10 @@
     "tensorflow": {
         "bestModel": 382
     },
-    "debug": false
+    "debug": {
+        "request": false,
+        "memory": false,
+        "error": true,
+        "any": false
+    }
 }

@@ -18,13 +18,10 @@ import { existsSync } from "fs";
 import sizeOf from "image-size";
 import sharp from "sharp";
 import { table } from "table";
-import '@tensorflow/tfjs-backend-wasm';
+import "@tensorflow/tfjs-backend-wasm";
 
-sharp.cache(false);
-sharp.concurrency(4);
-sharp.simd(true);
 const bestModel = settings.tensorflow.bestModel;
-let cachedModel: GraphModel
+let cachedModel: GraphModel;
 
 export async function removeBackground(img: Buffer) {
   const memAntes = process.memoryUsage();
@@ -40,7 +37,7 @@ export async function removeBackground(img: Buffer) {
   } else {
     cachedModel = await loaderModel(bestModel);
   }
-  
+
   try {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) return; // Skip invalid images
@@ -57,18 +54,20 @@ export async function removeBackground(img: Buffer) {
     });
 
     const predict = async (input: Tensor<Rank>) => {
-      setBackend('tensorflow');
-      const output = await cachedModel.execute(input) as Tensor3D;
+      setBackend("tensorflow");
+      const output = (await cachedModel.execute(input)) as Tensor3D;
       return output;
-    }    
+    };
 
-    let prediction = await predict(imgTensor) 
-      prediction = prediction.squeeze([0]);
+    let prediction = await predict(imgTensor);
+    prediction = prediction.squeeze([0]);
     if (prediction.max().dataSync()[0] > 1) {
-      prediction = prediction.sub(prediction.min()).div(prediction.max().sub(prediction.min()))
+      prediction = prediction
+        .sub(prediction.min())
+        .div(prediction.max().sub(prediction.min()));
     }
 
-    const pixelsUint8 = await browser.toPixels(prediction as Tensor3D );
+    const pixelsUint8 = await browser.toPixels(prediction as Tensor3D);
     // const pixelsUint8 = new Uint8ClampedArray(pred3d.dataSync().map(value => Math.round(value * 255)))
     // const pixelsUint8 = pred3d.dataSync()
 
@@ -97,18 +96,21 @@ export async function removeBackground(img: Buffer) {
 
     const imageProcessed = await sharp(invertImage)
       .composite([{ input: maskedImage }])
+      .png()
       .toBuffer();
 
-    console.log(
-      table([
-        ["Size", "Shape", "dType"],
-        [
-          `${height},${width}`,
-          String(imgTensor.shape),
-          String(imgTensor.dtype),
-        ],
-      ])
-    );
+    if (settings.debug.any === true) {
+      console.log(
+        table([
+          ["Size", "Shape", "dType"],
+          [
+            `${height},${width}`,
+            String(imgTensor.shape),
+            String(imgTensor.dtype),
+          ],
+        ])
+      );
+    }
 
     [mask, invertImage, maskedImage, pixelsUint8].forEach((buffer) =>
       buffer.fill(0)
@@ -121,7 +123,7 @@ export async function removeBackground(img: Buffer) {
 
     const memDepois = process.memoryUsage();
 
-    if (settings.debug === true) {
+    if (settings.debug.memory === true) {
       console.log("Tensorflow Process Images View Memory Usage");
       const tableData = [
         ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
@@ -147,8 +149,10 @@ export async function removeBackground(img: Buffer) {
 
     return imageProcessed;
   } catch (err) {
-    console.log("Erro ao processar imagens no Tensorflow");
-    console.log(err);
+    if (settings.debug.error === true) {
+      console.log("Erro ao processar imagens no Tensorflow");
+      console.log(err);
+    }
     return;
   }
 }

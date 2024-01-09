@@ -1,4 +1,5 @@
 import { Response, Request } from 'express';
+import settings from '@/settings.json'
 
 export async function bypass(res: Response, buffer: Buffer): Promise<void> {
   try {
@@ -8,6 +9,9 @@ export async function bypass(res: Response, buffer: Buffer): Promise<void> {
     res.write(buffer);
     res.end();
   } catch (err) {
-    console.log("Erro no Bypass: \n" + err)
+    if (settings.debug.error === true) {
+    console.log("Erro no Bypass")
+    console.log(err)
+    }
   }
 }

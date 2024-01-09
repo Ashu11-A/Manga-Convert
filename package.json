@@ -34,6 +34,7 @@
     "express": "^4.18.2",
     "express-http-proxy": "^2.0.0",
     "fs": "^0.0.1-security",
+    "got": "^14.0.0",
     "heapdump": "^0.3.15",
     "http-proxy-middleware": "^2.0.6",
     "image-size": "^1.0.2",
@@ -41,6 +42,7 @@
     "lodash": "^4.17.21",
     "node-pre-gyp": "^0.17.0",
     "pngjs": "^7.0.0",
+    "probe-image-size": "^7.2.3",
     "sharp": "^0.33.1",
     "table": "^6.8.1",
     "tscpaths": "^0.0.9",
@@ -51,6 +53,7 @@
     "@types/express-http-proxy": "^1.6.6",
     "@types/heapdump": "^0.3.4",
     "@types/pngjs": "^6.0.4",
+    "@types/probe-image-size": "^7.2.4",
     "sucrase": "^3.34.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"

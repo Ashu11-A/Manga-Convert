@@ -5,34 +5,29 @@ import { shouldCompress } from "./shouldCompress";
 import { bypass } from "@/proxy/bypass";
 import { table } from "table";
 import { convertSize } from "@/functions/formatBytes";
-import { writeFile } from "fs";
 import settings from "@/settings.json";
-
-sharp.cache(false);
-sharp.concurrency(4);
-sharp.simd(true);
+import { send } from "@/proxy/send";
 
 export async function compress(
   req: Request,
   res: Response,
   input: Buffer
-): Promise<void> {
+): Promise<Buffer | undefined> {
   const memAntes = process.memoryUsage();
-  const format = req.params.webp ? "png" : "jpeg";
-
   console.log("Iniciando compressão...");
 
   try {
-    if (shouldCompress(req)) {
-      const output = await sharp(input)
-        .grayscale(req.params.grayscale ? true : false)
-        .png({
-          quality: parseInt(req.params.quality) || 80,
-        })
-        .toBuffer();
+    const output = await sharp(input)
+      .grayscale(req.params.grayscale ? true : false)
+      .png({
+        quality: parseInt(req.params.quality) || 80,
+      })
+      .toBuffer();
 
-      const originalSize = parseInt(req.params.originSize);
-      const compressedSize = output.length;
+    const originalSize = parseInt(req.params.originSize);
+    const compressedSize = output.length;
+
+    if (settings.debug.any === true) {
       const infoTable = [
         ["Input", "Tensor", "Output"],
         [
@@ -42,46 +37,23 @@ export async function compress(
         ],
       ];
       console.log(table(infoTable));
-
-      if (compressedSize >= originalSize) {
-        console.log(
-          `A compressão resultou em um tamanho de arquivo maior(${compressedSize}). Retornando a imagem original.`
-        );
-
-        res.setHeader("content-type", `image/${format}`);
-        res.setHeader("content-length", originalSize.toString());
-        res.setHeader("x-original-size", originalSize.toString());
-        res.status(200);
-        res.send(input);
-      } else {
-        console.log("Imagem comprimida com sucesso.");
-        res.setHeader("content-type", `image/${format}`);
-        res.setHeader("content-length", compressedSize.toString());
-        res.setHeader("x-original-size", originalSize.toString());
-        res.setHeader(
-          "x-bytes-saved",
-          (originalSize - compressedSize).toString()
-        );
-        res.status(200);
-        res.send(output);
-
-        writeFile(
-          `teste/prediction-${new Date().toISOString()}.png`,
-          output,
-          () => {
-            console.log("Erro ao salvar Imagem");
-          }
-        );
-      }
+    }
+    if (compressedSize >= originalSize) {
+      console.log("Imagem maior que a comprimida.");
+      return input;
     } else {
-      await bypass(res, input);
+      console.log("Imagem comprimida com sucesso.");
+      return output;
     }
   } catch (err) {
-    console.log('Erro na compactação')
-    return redirect(req, res);
+    if (settings.debug.error === true) {
+      console.log("Erro na compactação");
+      console.log(err);
+    }
+    return;
   } finally {
-    const memDepois = process.memoryUsage();
-    if (settings.debug === true) {
+    if (settings.debug.memory === true) {
+      const memDepois = process.memoryUsage();
       console.log("Sharp Compress Images");
       const tableData = [
         ["Tipo de Memória", "Antes (MB)", "Depois (MB)"],
