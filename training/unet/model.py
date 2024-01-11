@@ -40,9 +40,9 @@ def FindModel(hp: HyperParameters):
         x = ReLU()(x)
         return x
     
-    filter = [32, 64, 128, 256, 512]
+    filter = [64, 128, 256, 512]
     # encode
-    input = Input(shape=(768, 512, 4))
+    input = Input(shape=(512, 256, 4))
     x, temp1 = down_block(input, filter[0]) # type: ignore
     x, temp2 = down_block(x, filter[1]) # type: ignore
     x, temp3 = down_block(x, filter[2]) # type: ignore
@@ -62,9 +62,11 @@ def FindModel(hp: HyperParameters):
     model = keras.Model(input, output, name='u-net')
     
     # Camada de saída
+    optimizer = getattr(keras.optimizers, str(optimizer))(learning_rate),
+    optimizer = keras.mixed_precision.LossScaleOptimizer(optimizer) # type: ignore
     model.compile(
         loss = getattr(keras.losses, str(loss))(),
-        optimizer = getattr(keras.optimizers, str(optimizer))(learning_rate),
+        optimizer = optimizer, # type: ignore
         metrics=['accuracy']
     )
     model.summary()
@@ -89,11 +91,9 @@ def LoaderModel():
 
     def down_block(x, filters: int, use_maxpool=True):
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
         if use_maxpool:
@@ -104,18 +104,16 @@ def LoaderModel():
         x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
         x = concatenate([x, y])
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
         return x
     
-    filter = [32, 64, 128, 256, 512]
+    filter = [64, 128, 256, 512, 1024]
     # encode
-    input = Input(shape=(768, 512, 4))
+    input = Input(shape=(512, 256, 4))
     x, temp1 = down_block(input, filter[0]) # type: ignore
     x, temp2 = down_block(x, filter[1]) # type: ignore
     x, temp3 = down_block(x, filter[2]) # type: ignore

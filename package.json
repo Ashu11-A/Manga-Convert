@@ -8,7 +8,7 @@
     "start:test": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin test/test.ts",
     "start:dev": "npx ts-node -r tsconfig-paths/register --transpiler sucrase/ts-node-plugin src/index.ts",
     "build": "tsc && tscpaths -p tsconfig.json -s ./src -o ./dist",
-    "product": "npm run build && npm run start",
+    "production": "npm run build && npm run start",
     "lint": "eslint --ext .tsx,.ts --fix ./src -c .eslintrc.json"
   },
   "repository": {

@@ -1,6 +1,6 @@
 import argparse
 import tensorflowjs as tfjs
-from model.getData import DataLoader
+from functions.getData import DataLoader
 
 parser = argparse.ArgumentParser(description='Treinamento de modelo')
 parser.add_argument('--model', type=str, help='Se o treinamento deve achar o melhor resultado')

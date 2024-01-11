@@ -1,4 +1,3 @@
-import asyncio
 import numpy as np
 import tensorflow as tf
 import tensorflowjs as tfjs
@@ -15,17 +14,35 @@ from functions.getData import DataLoader
 from unet.tensor import TensorLoader
 from unet.model import FindModel, LoaderModel
 
+import asyncio
+import tqdm
+
 async def runTraining():
+    # Starting
+    parser = argparse.ArgumentParser(description='Treinamento de modelo')
+    parser.add_argument('--best', action='store_true', help='Se o treinamento deve achar o melhor resultado')
+    parser.add_argument('--model', type=str, help='Modelo')
+    parser.add_argument(
+        "--unet",
+        action="store_const",
+        const=None,
+        default=None,
+        help="Use U-Net architecture",
+    )
+    args = parser.parse_args()
+
+
     # Aumentar artificalmente a memoria vRam da GPU
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
-            logical_gpus = tf.config.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+                logical_gpus = tf.config.list_logical_devices('GPU')
+                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
             print(e)
             
     # Debugging
@@ -41,40 +58,35 @@ async def runTraining():
     print('Found GPU at: {}'.format(device_name))
     
     # Optimization
-    # policy = keras.mixed_precision.Policy('mixed_float16') # Calculos em float16
-    # keras.mixed_precision.set_global_policy(policy)
-    # print('Compute dtype: %s' % policy.compute_dtype)
-    # print('Variable dtype: %s' % policy.variable_dtype)
+    policy = keras.mixed_precision.Policy('mixed_float16') # Calculos em float16
+    keras.mixed_precision.set_global_policy(policy)
+    print('Compute dtype: %s' % policy.compute_dtype)
+    print('Variable dtype: %s' % policy.variable_dtype)
     
     tf.config.set_soft_device_placement(True) # Ativar cominicação entre CPU e GPU!
 
     logs = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tf.profiler.experimental.Profile(logdir=logs)
 
-
+    # Loader Files
     markDir = 'dados_cache/treino/train'
     loaderFiles = DataLoader()
-    loaderTensor = TensorLoader()
-    parser = argparse.ArgumentParser(description='Treinamento de modelo')
-    parser.add_argument('--best', action='store_true', help='Se o treinamento deve achar o melhor resultado')
-    parser.add_argument('--model', type=str, help='Modelo')
-    args = parser.parse_args()
-
     imagens, mascaras = await loaderFiles.LoadFiles(markDir, onlyPath=True) or ([], [])
     
     if (imagens is [] or mascaras is []): return print('Nenhum dado carregado!')
-
     if not isinstance(imagens, list) and not isinstance(imagens[0], str):
         print('Os dados recebidos de imagens e mascaras, são incompativeis!')
         return
 
+    # Convert to Tensor
+    loaderTensor = TensorLoader()
     totalModel = loaderFiles.countFolders('models')
     inputs, labels = loaderTensor.convert_to_tensor(inputs=imagens, labels=mascaras) # type: ignore
     
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
     # Tamanho do conjunto de dados
-    DATASET_SIZE = len(imagens)
+    DATASET_SIZE = inputs.shape[0] # type: ignore
     # Embaralha as coisas
     dataset = dataset.shuffle(DATASET_SIZE)
     # Tamanho do conjunto de treinamento e validação
@@ -87,22 +99,6 @@ async def runTraining():
     train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     print(f"Treinamento: {N_TRAIN}")
     print(f"Validadores: {N_VALIDATION}")
-    
-    def display(display_list):
-        plt.figure(figsize=(15, 15))
-        title = ["Input Image", "True Mask"]
-        
-        for i in range(len(display_list)):
-            plt.subplot(1, len(display_list), i+1)
-            plt.figure(facecolor='black')
-            plt.title(title[i])
-            plt.imshow(keras.utils.array_to_img(display_list[i]))
-            plt.axis('off')
-        plt.savefig('./teste.png')
-    sample_batch = next(iter(train_ds))
-    random_index = np.random.choice(sample_batch[0].shape[0])
-    sample_image, sample_mask = sample_batch[0][random_index], sample_batch[1][random_index]
-    display([sample_image, sample_mask])
 
     if args.model:
         print(F'Retreinando o Modelo: {args.model}')
@@ -162,7 +158,6 @@ async def runTraining():
             TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
             TerminateOnNaN(),
             ReduceLROnPlateau(monitor='val_loss', factor=0.25, patience=5, cooldown=5, min_lr=0.000000001), # type: ignore
-            BackupAndRestore(f'models/my-model-{totalModel}/checkpoints')
         ],
         use_multiprocessing=True
     )
@@ -194,3 +189,5 @@ async def runTraining():
     print('Best epoch: %d' % (best_epoch))
         
     print(f'Modelo salvo: {datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")}')
+
+asyncio.run(runTraining())

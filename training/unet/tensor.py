@@ -1,7 +1,4 @@
-import datetime
-from typing import List
 import tensorflow as tf
-import tf_keras as keras
 from PIL import Image
 import numpy as np
 from memory_profiler import profile
@@ -13,10 +10,10 @@ class TensorLoader:
         def decode_images(imgPath: str):
                 #     Tipo     |      Dimensões     | Uso de memória (MiB)
                 # -------------|--------------------|--------
-                # decode_img_1 | (387, 768, 512, 4) | 5458.3
-                # decode_img_2 | (386, 768, 512, 4) | 5726.7
-                # decode_img_3 | (386, 768, 512, 4) | 7007.0
-                # decode_img_4 | (387, 768, 512, 4) | 5436.7
+                # decode_img_1 | (387, 512, 256, 4) | 5458.3
+                # decode_img_2 | (386, 512, 256, 4) | 5726.7
+                # decode_img_3 | (386, 512, 256, 4) | 7007.0
+                # decode_img_4 | (387, 512, 256, 4) | 5436.7
 
                 # decode_img_1 = tf.image.decode_image(tf.io.read_file(imgPath), channels=4, dtype=tf.dtypes.float32)
                 # decode_img_2 = tf.image.decode_image(contents=imgPath, channels=4, dtype=tf.dtypes.float32)
@@ -25,7 +22,7 @@ class TensorLoader:
                 decode_img_4 = np.load(imgPath)
                 decode_img_4 = decode_img_4['arr_0']
 
-                # resize_img = tf.image.resize(decode_img, [768, 512])
+                # resize_img = tf.image.resize(decode_img, [512, 256])
                 
                 # normalized = tf.cast(decode_img, tf.float32) / 255.0 # type: ignore
                 # normalized = tf.image.per_image_standardization(decode_img)
@@ -44,9 +41,9 @@ class TensorLoader:
         def processImages(imgList):
             #     Tipo     |      Dimensões     | Uso de memória (MiB)
             # -------------|--------------------|--------
-            # decode_img_1 | (387, 768, 512, 4) | 7780.8
-            # decode_img_2 | (386, 768, 512, 4) | 8043.0
-            # decode_img_4 | (387, 768, 512, 4) | 7758.4
+            # decode_img_1 | (387, 512, 256, 4) | 7780.8
+            # decode_img_2 | (386, 512, 256, 4) | 8043.0
+            # decode_img_4 | (387, 512, 256, 4) | 7758.4
             decoded_images = [tf.expand_dims(decode_images(img), axis=0) for img in tqdm(imgList)]
             decoded_images = tf.concat(decoded_images, 0)
             return decoded_images

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Request, Response, response } from "express";
+import { Request, Response } from "express";
 import { copyHeaders } from "./copyHeaders";
 import { redirect } from "./redirects";
 import { compress } from "../compress/compress";
