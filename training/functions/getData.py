@@ -14,8 +14,8 @@ class DataLoader:
                 for entry in os.scandir(directory):
                     if entry.is_dir(follow_symlinks=False):
                         scan_directory(entry.path)
-                    elif entry.is_file(follow_symlinks=False) and entry.path.endswith('.npz'):
-                        mark_path = Path(entry.path.replace("train", "validation")).with_suffix('.npz')
+                    elif entry.is_file(follow_symlinks=False) and entry.path.endswith(('.npz', '.png', '.jpg', '.jpeg', '.webp')):
+                        mark_path = Path(entry.path.replace("train", "validation"))
                         if mark_path.exists():
                             if onlyPath != True:
                                 with open(entry.path, 'rb') as file:

@@ -5,7 +5,7 @@ import keras
 import json
 from datetime import datetime
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN, LambdaCallback, ReduceLROnPlateau, ProgbarLogger, BackupAndRestore
+from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN, CSVLogger, ReduceLROnPlateau
 import keras_tuner as kt
 import argparse
 import matplotlib.pyplot as plt
@@ -31,22 +31,24 @@ async def runTraining():
     )
     args = parser.parse_args()
 
-
     # Aumentar artificalmente a memoria vRam da GPU
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
-            # Currently, memory growth needs to be the same across GPUs
+            # Use apenas a memoria necessaria
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
-                logical_gpus = tf.config.list_logical_devices('GPU')
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+            # Limite um certa quantia de memoria
+            # tf.config.set_logical_device_configuration(
+            #     gpus[0],
+            #     [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+            logical_gpus = tf.config.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
             print(e)
             
     # Debugging
-    tf.debugging.set_log_device_placement(True)
+    # tf.debugging.set_log_device_placement(True)
     
     seed = 319
     tf.random.set_seed(seed)
@@ -92,7 +94,7 @@ async def runTraining():
     # Tamanho do conjunto de treinamento e validação
     N_TRAIN = int(0.8 * DATASET_SIZE)
     N_VALIDATION = int(0.2 * DATASET_SIZE)
-    BATCH_SIZE = 4
+    BATCH_SIZE = 8
 
     # Divida o conjunto de dados em treinamento e validação
     validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
@@ -125,7 +127,7 @@ async def runTraining():
                 EarlyStopping(monitor='val_accuracy', patience=25, verbose=1),
                 TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
                 TerminateOnNaN(),
-                ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, cooldown=5, min_lr=0.000000001, verbose=1), # type: ignore
+                ReduceLROnPlateau(factor=0.1, patience=5, min_lr=0.00001, verbose=1), # type: ignore
             ],
             batch_size=1,
             use_multiprocessing=True
@@ -154,10 +156,10 @@ async def runTraining():
         batch_size=1,
         callbacks=[
             ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
-            EarlyStopping(monitor='val_accuracy', patience=25, verbose=1),
-            TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
+            EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
+            TensorBoard(log_dir=logs, histogram_freq=1, embeddings_freq=1),
             TerminateOnNaN(),
-            ReduceLROnPlateau(monitor='val_loss', factor=0.25, patience=5, cooldown=5, min_lr=0.000000001), # type: ignore
+            ReduceLROnPlateau(factor=0.1, patience=5, min_lr=0.00001, verbose=1), # type: ignore
         ],
         use_multiprocessing=True
     )

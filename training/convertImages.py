@@ -15,26 +15,22 @@ parse.add_argument('--png', action='store_true', help="Converte em PNG")
 parse.add_argument('--verify', action='store_true', help="Verifica as imagens")
 args = parse.parse_args()
 
-def resize_images(path: str):
+def resize_images(path: str, type: str):
     image = Image.open(path)
 
-    image = image.resize((256, 512), Image.LANCZOS)
+    image = image.resize((512, 768), Image.LANCZOS)
     image = image.convert('RGBA')
-    imageInvert = image.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
+    imageInvert1 = image.transpose(Image.FLIP_LEFT_RIGHT)
+    imageInvert2 = image.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
     
     # Normalize the float32 data to [0, 1]
     # image_array = (image_array - np.min(image_array)) / (np.max(image_array) - np.min(image_array))
-
-    # Convert the image to a NumPy array with float32 dtype
-    image_array = np.array(image, dtype=np.float32) / 255.0
-    imageInvert_array = np.array(imageInvert, dtype=np.float32) / 255.0
 
     # Save the NumPy array as a compressed npz file
     path = str(path).replace("dados", "dados_cache")
 
     dirName = os.path.dirname(path)
     fileName = os.path.basename(path)
-    print(f"{dirName}/{fileName}")
     if not os.path.exists(dirName):
         os.makedirs(dirName)
         
@@ -43,9 +39,25 @@ def resize_images(path: str):
     # image_png = Image.fromarray(image_array_uint8, mode='RGBA')
     # image_png.save(os.path.join(dirName, fileName.replace(".png", "_float32.png")))
 
-    np.savez_compressed(os.path.join(dirName, fileName.replace(".png", ".npz")), image_array)
-    np.savez_compressed(os.path.join(dirName, fileName.replace(".png", "_invert.npz")), imageInvert_array)
+    if type == 'npz':
+        # Convert the image to a NumPy array with float32 dtype
+        image_array = np.array(image, dtype=np.float32) / 255.0
+        imageInvert1_array = np.array(imageInvert1, dtype=np.float32) / 255.0
+        imageInvert2_array = np.array(imageInvert2, dtype=np.float32) / 255.0
 
+        np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f".{type}")), image_array)
+        np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f"_invert[0].{type}")), imageInvert1_array)
+        np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f"_invert[1].{type}")), imageInvert2_array)
+    elif type == 'png':
+        fileName = fileName.replace(('.webp'), '.png')
+        image.save(f"{dirName}/{fileName}")
+        
+        fileName = fileName.replace(".png", "_invert[0].png")
+        imageInvert1.save(f"{dirName}/{fileName}")
+        
+        fileName = fileName.replace("_invert[0].png", "_invert[1].png")
+        imageInvert2.save(f"{dirName}/{fileName}")
+        
 
 path = "dados/treino/train"
 loader = DataLoader()
@@ -56,12 +68,13 @@ async def processFiles():
     if files is not None:
         if args.npz == True:
             for filePath in tqdm(files):
-                    if (filePath.endswith('.png')):
+                    if (filePath.endswith(('.png', '.webp'))):
                         if (
                             not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", ".npz")) == True
-                            and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert.npz")) == True
+                            and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert[0].npz")) == True
+                            and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert[1].npz")) == True
                         ):
-                            resize_images(filePath)
+                            resize_images(filePath, 'npz')
                             processed += 1
                         else:
                             print(f"Já existe: {filePath}")
@@ -69,18 +82,18 @@ async def processFiles():
                         print(f'Arquivo em formato invalido: {filePath}')
         elif args.png == True:
             for filePath in tqdm(files):
-                if (not filePath.endswith('.png')):
-                    with io.open(filePath, 'rb') as f:
-                        image = Image.open(f)
-                        image.convert('RGBA')
-                        
-                        dir = os.path.dirname(filePath)
-                        fileName = os.path.basename(filePath).split('.')[0]
-                        
-                        print(f"{dir}/{fileName}.png")
-                        image.save(f"{dir}/{fileName}.png")
-                        os.remove(filePath)
+                if (filePath.endswith(('.png', '.webp'))):
+                    if (
+                            not os.path.exists(filePath.replace("dados", "dados_cache")) == True
+                            and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert[0].png")) == True
+                            and not os.path.exists(filePath.replace("dados", "dados_cache").replace(".png", "_invert[1].png")) == True
+                        ):
+                        resize_images(filePath, 'png')
                         processed += 1
+                    else:
+                        print(f"Já existe: {filePath}")
+                else:
+                    print(f'Arquivo em formato invalido: {filePath}')
         elif args.verify == True:
             def join_strings(array):
                 return [list(x) for x in zip(*[iter(list(array))]*2)]

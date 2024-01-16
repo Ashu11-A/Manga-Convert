@@ -35,7 +35,7 @@ export async function testRun() {
     // const imgResize = sharp(img).resize(256, 512)
     
     const inputImage  = tf.node.decodeImage(img, 4)
-    const preProcessedImage = tf.image.resizeBilinear(inputImage, [512, 256])
+    const preProcessedImage = tf.image.resizeBilinear(inputImage, [768, 512])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
     
     const normalizedInputs = tf.tidy(() => {
