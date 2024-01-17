@@ -83,22 +83,66 @@ async def runTraining():
     # Convert to Tensor
     loaderTensor = TensorLoader()
     totalModel = loaderFiles.countFolders('models')
-    inputs, labels = loaderTensor.convert_to_tensor(inputs=imagens, labels=mascaras) # type: ignore
+    # inputs = loaderTensor.convert_to_tensor(imagens)
+    # labels = loaderTensor.convert_to_tensor(mascaras)
     
+    image_filenames = tf.constant(imagens)
+    masks_filenames = tf.constant(mascaras)
     
-    dataset = tf.data.Dataset.from_tensor_slices((inputs, labels))
-    # Tamanho do conjunto de dados
-    DATASET_SIZE = inputs.shape[0] # type: ignore
-    # Embaralha as coisas
-    dataset = dataset.shuffle(DATASET_SIZE)
-    # Tamanho do conjunto de treinamento e validação
-    N_TRAIN = int(0.8 * DATASET_SIZE)
-    N_VALIDATION = int(0.2 * DATASET_SIZE)
-    BATCH_SIZE = 8
+    print(image_filenames, masks_filenames)
 
-    # Divida o conjunto de dados em treinamento e validação
-    validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-    train_ds = dataset.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    dataset = tf.data.Dataset.from_tensor_slices((image_filenames, masks_filenames))
+    
+    def process_path(image_path, mask_path):
+        img = tf.io.read_file(image_path)
+        img = tf.image.decode_png(img, channels=4, dtype=tf.dtypes.uint8) # type: ignore
+        img = tf.cast(img, tf.float32) / tf.constant(256, dtype=tf.float32)
+
+        mask = tf.io.read_file(mask_path)
+        mask = tf.image.decode_png(mask, channels=4, dtype=tf.dtypes.uint8) # type: ignore
+        mask = tf.cast(mask, tf.float32) / tf.constant(256, dtype=tf.float32)
+        
+        print(tf.reduce_min(img), tf.reduce_max(img))
+        print(tf.reduce_min(mask), tf.reduce_max(mask))
+        # mask = tf.math.reduce_max(mask, axis=-1, keepdims=True)
+        return img, mask
+
+    def preprocess(image, mask):
+        input_image = tf.image.resize(image, (512, 256), method='nearest')
+        input_mask = tf.image.resize(mask, (512, 256), method='nearest')
+        
+        return input_image, input_mask
+
+    image_ds = dataset.map(process_path)
+    processed_image_ds = image_ds.map(preprocess)
+    def display(display_list):
+        plt.figure(figsize=(15, 15))
+
+        title = ['Input Image', 'True Mask', 'Predicted Mask']
+
+        for i in range(len(display_list)):
+            plt.subplot(1, len(display_list), i+1)
+            plt.title(title[i])
+            plt.imshow(keras.preprocessing.image.array_to_img(display_list[i]))
+            plt.axis('off')
+        plt.show()
+        
+    for image, mask in processed_image_ds.take(2):
+        sample_image, sample_mask = image, mask
+        print(image.shape)
+        print(mask.shape)
+        display([sample_image, sample_mask])
+        
+    EPOCHS = 100
+    BUFFER_SIZE = len(imagens)
+    BATCH_SIZE = 10
+    N_TRAIN = int(0.8 * BUFFER_SIZE)
+    N_VALIDATION = int(0.2 * BUFFER_SIZE)
+    
+    processed_image_ds.shuffle(BUFFER_SIZE)
+    validate_ds = processed_image_ds.take(N_VALIDATION).batch(BATCH_SIZE).cache()
+    train_ds = processed_image_ds.skip(N_VALIDATION).take(N_TRAIN).batch(BATCH_SIZE).cache()
+    print(processed_image_ds.element_spec)
     print(f"Treinamento: {N_TRAIN}")
     print(f"Validadores: {N_VALIDATION}")
 
@@ -114,7 +158,7 @@ async def runTraining():
         tuner = kt.Hyperband(
             FindModel,
             objective='val_accuracy',
-            max_epochs=100,
+            max_epochs=EPOCHS,
             factor=3,
             max_consecutive_failed_trials=3,
             directory='models',
@@ -152,7 +196,7 @@ async def runTraining():
     history = model.fit(
         train_ds,
         validation_data=validate_ds,
-        epochs=100,
+        epochs=EPOCHS,
         batch_size=1,
         callbacks=[
             ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),

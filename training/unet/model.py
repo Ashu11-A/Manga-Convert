@@ -3,68 +3,67 @@ from typing import List, Union
 import keras as keras
 from keras import layers
 from keras.regularizers import L1
-from keras.layers import Conv2D, Input, ReLU, BatchNormalization, concatenate, Dropout, Conv2DTranspose, Conv2DTranspose
+from keras.layers import Conv2D, Input, ReLU, BatchNormalization, concatenate, Dropout, Conv2DTranspose, Conv2DTranspose, MaxPooling2D
 from keras_tuner import HyperParameters
 
 def FindModel(hp: HyperParameters): 
     # Camada de Entrada
     loss = hp.Choice('loss', ['BinaryCrossentropy'])
     optimizer = hp.Choice('optimizer', ['Adam'])
-    # activation = hp.Choice("activation", ["relu"])
+    activation = hp.Choice("activation", ["relu"])
     activation_end = hp.Choice("activation_end", ["sigmoid"])
-    pooling = hp.Choice('pooling', ['MaxPooling2D', 'AveragePooling2D'])
+    pooling = hp.Choice('pooling', ['MaxPooling2D'])
     # upscale = hp.Choice('upscale', ['Conv2DTranspose'])
     learning_rate = hp.Choice('learning_rate', values=[0.001])
-    kernel_initializer = hp.Choice('kernel_initializer', ['he_normal'])
+    kernel_initializer: str = hp.Choice('kernel_initializer', ['he_normal']) # type: ignore
     kernel_size = hp.Choice('kernel_size', values=[3])
-    dropout = hp.Float('dropout_rate', 0.1, 0.5, step=0.1)
-    filter = hp.Choice('filter', values=[4, 8, 16])
+    dropout: int = hp.Float('dropout_rate', 0.1, 0.5, step=0.1) # type: ignore
+    filter: int = hp.Choice('filter', values=[8, 16, 32]) # type: ignore
+    input = Input(shape=(512, 256, 4))
     
-    
-    def down_block(x, filters: int, factor: int, use_maxpool=True):
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
+    def down_block(x, filters: int, dropout_prob: float = 0, use_maxpool=True):
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
+        if dropout_prob > 0:
+            x = Dropout(dropout_prob)(x)
         if use_maxpool:
             return getattr(layers, str(pooling))((2, 2))(x), x
-        return x
+        return x, x
     
-    def up_block(x, y, filters, factor: int):
-        x = Conv2DTranspose(filters, (2, 2), strides=(2, 2), padding='same')(x)
-        x = concatenate([x, y])
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
-        x = BatchNormalization()(x)
-        x = ReLU()(x)
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = Dropout(dropout)(x)
-        x = BatchNormalization()(x)
-        x = ReLU()(x)
+    def up_block(x, y, filters):
+        x = Conv2DTranspose(filters, kernel_size, strides=(2, 2), padding='same')(x)
+        x = concatenate([x, y], axis=3)
+        x = Conv2D(filters, kernel_size, activation=activation, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = Conv2D(filters, kernel_size, activation=activation, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         return x
     
     # encode
-    input = Input(shape=(768, 512, 4))
-    x, temp1 = down_block(input, filter, factor=2) # type: ignore
-    x, temp2 = down_block(x, filter, factor=4) # type: ignore
-    x, temp3 = down_block(x, filter, factor=8) # type: ignore
-    x, temp4 = down_block(x, filter, factor=16) # type: ignore
+    cblock1 = down_block(input, filter)
+    cblock2 = down_block(cblock1[0], filter * 2)
+    cblock3 = down_block(cblock2[0], filter * 4)
+    cblock4 = down_block(cblock3[0], filter* 8, dropout_prob=dropout)
     
-    x = down_block(x, filter, use_maxpool = False, factor=32) # type: ignore
+    cblock5 = down_block(cblock4[0], filter * 16, use_maxpool = False, dropout_prob=dropout)
     
     # decode 
-    x = up_block(x, temp4, filter, factor=16) # type: ignore
-    x = up_block(x, temp3, filter, factor=8) # type: ignore
-    x = up_block(x, temp2, filter, factor=4) # type: ignore
-    x = up_block(x, temp1, filter, factor=2) # type: ignore
+    ublock6 = up_block(cblock5[0], cblock4[1], filter * 8)
+    ublock7 = up_block(ublock6, cblock3[1], filter * 4)
+    ublock8 = up_block(ublock7, cblock2[1], filter * 2)
+    ublock9 = up_block(ublock8, cblock1[1], filter)
     
-    output = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(x)
+    conv9 = Conv2D(filter,
+                3,
+                activation='relu',
+                padding='same',
+                kernel_initializer=f"{kernel_initializer}")(ublock9)
     
-    model = keras.Model(input, output, name='u-net')
+    conv10 = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(conv9)
+    
+    model = keras.Model(input, conv10, name='u-net')
     
     # Camada de saída
     model.compile(
@@ -82,63 +81,67 @@ def LoaderModel():
     # ID: 383 - val_accuracy: [0.89926] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
     # ID: 385 - val_accuracy: [0.89182] | filter: [32, 64, 128, 256, 512] - kernel_size: 7 / 0.4
     # ID: 399 - val_accuracy: [0.90410] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
+    input = Input(shape=(512, 256, 4))
     loss = 'BinaryCrossentropy'
     optimizer = 'Adam'
     learning_rate = 0.001
     kernel_size = 3
-    dropout = 0.2
-    filter = 16
+    dropout = 0.3
+    filter = 32
+    activation = 'relu'
     
     kernel_initializer = 'he_normal'
     activation_end = 'sigmoid'
     pooling = 'MaxPooling2D'
 
-    def down_block(x, filters: int, factor: int, use_maxpool=True):
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+    def down_block(x, filters: int, dropout_prob: float = 0, use_maxpool=True):
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         x = BatchNormalization()(x)
         x = ReLU()(x)
+        if dropout_prob > 0:
+            x = Dropout(dropout_prob)(x)
         if use_maxpool:
             return getattr(layers, str(pooling))((2, 2))(x), x
-        else:
-            return x
+        return x, x
     
-    def up_block(x, y, filters, factor: int):
+    def up_block(x, y, filters):
         x = Conv2DTranspose(filters, kernel_size, strides=(2, 2), padding='same')(x)
-        x = concatenate([x, y])
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = BatchNormalization()(x)
-        x = ReLU()(x)
-        x = Conv2D(filters * factor, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
-        x = BatchNormalization()(x)
-        x = ReLU()(x)
+        x = concatenate([x, y], axis=3)
+        x = Conv2D(filters, kernel_size, activation=activation, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
+        x = Conv2D(filters, kernel_size, activation=activation, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
         return x
     
     # encode
-    input = Input(shape=(768, 512, 4))
-    x, temp1 = down_block(input, filter, factor=2) # type: ignore
-    x, temp2 = down_block(x, filter, factor=4) # type: ignore
-    x, temp3 = down_block(x, filter, factor=8) # type: ignore
-    x, temp4 = down_block(x, filter, factor=16) # type: ignore
+    cblock1 = down_block(input, filter)
+    cblock2 = down_block(cblock1[0], filter * 2)
+    cblock3 = down_block(cblock2[0], filter * 4)
+    cblock4 = down_block(cblock3[0], filter* 8, dropout_prob=dropout)
     
-    x = down_block(x, filter, use_maxpool = False, factor=32)
+    cblock5 = down_block(cblock4[0], filter * 16, use_maxpool = False, dropout_prob=dropout)
     
     # decode 
-    x = up_block(x, temp4, filter, factor=16)
-    x = up_block(x, temp3, filter, factor=8)
-    x = up_block(x, temp2, filter, factor=4)
-    x = up_block(x, temp1, filter, factor=2)
+    ublock6 = up_block(cblock5[0], cblock4[1], filter * 8)
+    ublock7 = up_block(ublock6, cblock3[1], filter * 4)
+    ublock8 = up_block(ublock7, cblock2[1], filter * 2)
+    ublock9 = up_block(ublock8, cblock1[1], filter)
     
-    output = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(x)
+    conv9 = Conv2D(filter,
+                3,
+                activation='relu',
+                padding='same',
+                kernel_initializer=f"{kernel_initializer}")(ublock9)
     
-    model = keras.Model(input, output, name='u-net')
+    conv10 = Conv2D(4, (1, 1), activation=activation_end, dtype='float32')(conv9)
+    
+    model = keras.Model(input, conv10, name='u-net')
     
     # Camada de saída
     model.compile(
         loss = getattr(keras.losses, str(loss))(),
-        optimizer = getattr(keras.optimizers, str(optimizer))(learning_rate),
+        optimizer = 'adam',
         metrics=['accuracy']
     )
     model.summary()

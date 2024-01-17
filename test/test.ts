@@ -35,7 +35,7 @@ export async function testRun() {
     // const imgResize = sharp(img).resize(256, 512)
     
     const inputImage  = tf.node.decodeImage(img, 4)
-    const preProcessedImage = tf.image.resizeBilinear(inputImage, [768, 512])
+    const preProcessedImage = tf.image.resizeBilinear(inputImage, [512, 256])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
     
     const normalizedInputs = tf.tidy(() => {
@@ -43,6 +43,8 @@ export async function testRun() {
       const dataMin = inputTensor.min();
       return inputTensor.sub(dataMin).div(dataMax.sub(dataMin));
     });
+
+    console.log(normalizedInputs.min().dataSync()[0], normalizedInputs.max().dataSync()[0])
 
     
     const imgTensor = tf.stack([normalizedInputs]);

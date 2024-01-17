@@ -18,7 +18,7 @@ args = parse.parse_args()
 def resize_images(path: str, type: str):
     image = Image.open(path)
 
-    image = image.resize((512, 768), Image.LANCZOS)
+    image = image.resize((256, 512), Image.LANCZOS)
     image = image.convert('RGBA')
     imageInvert1 = image.transpose(Image.FLIP_LEFT_RIGHT)
     imageInvert2 = image.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
@@ -44,8 +44,8 @@ def resize_images(path: str, type: str):
         image_array = np.array(image, dtype=np.float32) / 255.0
         imageInvert1_array = np.array(imageInvert1, dtype=np.float32) / 255.0
         imageInvert2_array = np.array(imageInvert2, dtype=np.float32) / 255.0
-
-        np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f".{type}")), image_array)
+        fileName = fileName.replace(('.webp'), '.png')
+        np.savez_compressed(os.path.join(dirName, fileName.replace((".png"), f".{type}")), image_array)
         np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f"_invert[0].{type}")), imageInvert1_array)
         np.savez_compressed(os.path.join(dirName, fileName.replace(".png", f"_invert[1].{type}")), imageInvert2_array)
     elif type == 'png':
