@@ -2,7 +2,7 @@ node_modules
 dados
 dados_cache*
 models
-*.png
+model-test*
 logs
 
 # Python
