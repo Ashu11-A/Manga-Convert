@@ -1,6 +1,6 @@
 <div align="center">
 
-# Manga Converter
+# [ML] Manga (Dark Mode)
 
 ![license-info](https://img.shields.io/github/license/Ashu11-A/Manga-Converter?logo=gnu&style=for-the-badge&colorA=302D41&colorB=f9e2af&logoColor=f9e2af)
 ![stars-infoa](https://img.shields.io/github/stars/Ashu11-A/Manga-Converter?colorA=302D41&colorB=f9e2af&style=for-the-badge)
