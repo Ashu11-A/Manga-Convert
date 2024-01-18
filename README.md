@@ -13,10 +13,20 @@
 <div align="left">
 
 ## 📃 | Description
+Um simples projeto feito em Python (training) e TypeScript (proxy/tests) para remover o background de mangas. Fiz isso, pois leio mangas majoritariamente a noite.
 
 |Input|Output|
 |--|--|
 |![Input](./source/input.png)|![Output](./source/output.png)|
+
+Esse projeto usa U-Net, e foi implementado usando Tensorflow.
+
+U-Net article:
+```
+Ronneberger, Olaf, Philipp Fischer, and Thomas Brox.
+"U-net: Convolutional networks for biomedical image segmentation."
+In International Conference on Medical Image Computing and Computer-Assisted Intervention, pp. 234-241. Springer, Cham, 2015.
+```
 
 ## ⚙️ | Requirements
 | Program | Vesion |
@@ -54,7 +64,7 @@ python3 -m pip install --upgrade pip setuptools wheel
 sudo pip3 install pillow --no-binary :all:
 ```
 
-##### Start Virtual Environment
+##### Start Virtual Environment on Windows
 
 WSL2: https://www.tensorflow.org/install/pip?hl=pt-br#windows-wsl2_1
 
@@ -70,10 +80,10 @@ source bin/activate
 
 ```sh
 # Look for the best result.
-python training/training.py --best
+python training/start.py --best
 
 # Run a ready-made script.
-python training/training.py
+python training/start.py --unet
 ```
 
 ##### Saving current Libs
