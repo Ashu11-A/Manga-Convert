@@ -41,11 +41,11 @@ export async function removeBackground(img: Buffer) {
   try {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) return; // Skip invalid images
-    // const imgResize = sharp(img).resize(256, 512)
+    // const imgResize = sharp(img).resize(512, 768)
 
     const imgTensor = tidy(() => {
       const inputImage = node.decodeImage(img, 4);
-      const resizedImage = image.resizeBilinear(inputImage, [512, 256]);
+      const resizedImage = image.resizeBilinear(inputImage, [768, 512]);
       const normalizedInputs = resizedImage
         .sub(resizedImage.min())
         .div(resizedImage.max().sub(resizedImage.min()));

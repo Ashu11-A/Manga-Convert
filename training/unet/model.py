@@ -19,7 +19,7 @@ def FindModel(hp: HyperParameters):
     kernel_size = hp.Choice('kernel_size', values=[3])
     dropout: int = hp.Float('dropout_rate', 0.1, 0.5, step=0.1) # type: ignore
     filter: int = hp.Choice('filter', values=[8, 16, 32]) # type: ignore
-    input = Input(shape=(512, 256, 4))
+    input = Input(shape=(768, 512, 4))
     
     def down_block(x, filters: int, dropout_prob: float = 0, use_maxpool=True):
         x = Conv2D(filters, kernel_size, kernel_initializer=f"{kernel_initializer}", padding='same')(x)
@@ -81,12 +81,12 @@ def LoaderModel():
     # ID: 383 - val_accuracy: [0.89926] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
     # ID: 385 - val_accuracy: [0.89182] | filter: [32, 64, 128, 256, 512] - kernel_size: 7 / 0.4
     # ID: 399 - val_accuracy: [0.90410] | filter: [32, 64, 128, 256, 512] - kernel_size: 3 / 0.2
-    input = Input(shape=(512, 256, 4))
+    input = Input(shape=(768, 512, 4))
     loss = 'BinaryCrossentropy'
     optimizer = 'Adam'
     learning_rate = 0.001
     kernel_size = 3
-    dropout = 0.3
+    dropout = 0.2
     filter = 32
     activation = 'relu'
     

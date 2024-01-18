@@ -33,7 +33,7 @@ class TensorLoader:
                 decode_input_4 = tf.cast(input_tensor, tf.float32) / 255.0 # type: ignore
                 # decode_output_4 = tf.cast(output_tensor, tf.float32) / 255.0 # type: ignore
 
-                # resize_img = tf.image.resize(decode_img_1, [512, 256])
+                # resize_img = tf.image.resize(decode_img_1, [768, 512])
                 
                 # normalized = tf.cast(decode_img_1, tf.float32) / 255.0 # type: ignore
                 # normalized = tf.image.per_image_standardization(decode_img_1)

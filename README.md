@@ -14,6 +14,10 @@
 
 ## 📃 | Description
 
+|Input|Output|
+|--|--|
+|![Input](./source/input.png)|![Output](./source/output.png)|
+
 ## ⚙️ | Requirements
 | Program | Vesion |
 |--|--|

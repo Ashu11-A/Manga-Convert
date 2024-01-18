@@ -1,21 +1,22 @@
-import numpy as np
-import tensorflow as tf
-import tensorflowjs as tfjs
-import keras
-import json
-from datetime import datetime
-from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN, CSVLogger, ReduceLROnPlateau
-import keras_tuner as kt
 import argparse
-import matplotlib.pyplot as plt
+import asyncio
 
+import matplotlib.pyplot as plt
+from datetime import datetime
+import json
+
+import tensorflowjs as tfjs
+import tensorflow as tf
+
+from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, TerminateOnNaN, ReduceLROnPlateau
+from keras import backend as K
+import keras_tuner as kt
+import keras
+
+from unet.model import FindModel, LoaderModel
 from functions.getData import DataLoader
 from unet.tensor import TensorLoader
-from unet.model import FindModel, LoaderModel
 
-import asyncio
-import tqdm
 
 async def runTraining():
     # Starting
@@ -36,12 +37,12 @@ async def runTraining():
     if gpus:
         try:
             # Use apenas a memoria necessaria
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
+            # for gpu in gpus:
+            #     tf.config.experimental.set_memory_growth(gpu, True)
             # Limite um certa quantia de memoria
-            # tf.config.set_logical_device_configuration(
-            #     gpus[0],
-            #     [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+            tf.config.set_logical_device_configuration(
+                gpus[0],
+                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
             logical_gpus = tf.config.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
@@ -80,36 +81,30 @@ async def runTraining():
         print('Os dados recebidos de imagens e mascaras, são incompativeis!')
         return
 
-    # Convert to Tensor
-    loaderTensor = TensorLoader()
     totalModel = loaderFiles.countFolders('models')
-    # inputs = loaderTensor.convert_to_tensor(imagens)
-    # labels = loaderTensor.convert_to_tensor(mascaras)
     
     image_filenames = tf.constant(imagens)
     masks_filenames = tf.constant(mascaras)
-    
-    print(image_filenames, masks_filenames)
 
     dataset = tf.data.Dataset.from_tensor_slices((image_filenames, masks_filenames))
     
     def process_path(image_path, mask_path):
         img = tf.io.read_file(image_path)
-        img = tf.image.decode_png(img, channels=4, dtype=tf.dtypes.uint8) # type: ignore
-        img = tf.cast(img, tf.float32) / tf.constant(256, dtype=tf.float32)
+        img = tf.image.decode_png(img, channels=4) # type: ignore
+        img = tf.cast(img, tf.float32) / tf.constant(255, dtype=tf.float32)
 
         mask = tf.io.read_file(mask_path)
-        mask = tf.image.decode_png(mask, channels=4, dtype=tf.dtypes.uint8) # type: ignore
-        mask = tf.cast(mask, tf.float32) / tf.constant(256, dtype=tf.float32)
+        mask = tf.image.decode_png(mask, channels=4) # type: ignore
+        mask = tf.cast(mask, tf.float32) / tf.constant(255, dtype=tf.float32)
         
-        print(tf.reduce_min(img), tf.reduce_max(img))
-        print(tf.reduce_min(mask), tf.reduce_max(mask))
+        print(tf.math.reduce_min(img), tf.math.reduce_max(img))
+        print(tf.math.reduce_min(mask), tf.math.reduce_max(mask))
         # mask = tf.math.reduce_max(mask, axis=-1, keepdims=True)
         return img, mask
 
     def preprocess(image, mask):
-        input_image = tf.image.resize(image, (512, 256), method='nearest')
-        input_mask = tf.image.resize(mask, (512, 256), method='nearest')
+        input_image = tf.image.resize(image, (768, 512), method='nearest')
+        input_mask = tf.image.resize(mask, (768, 512), method='nearest')
         
         return input_image, input_mask
 
@@ -133,11 +128,11 @@ async def runTraining():
         print(mask.shape)
         display([sample_image, sample_mask])
         
-    EPOCHS = 100
+    EPOCHS = 10000
     BUFFER_SIZE = len(imagens)
-    BATCH_SIZE = 10
-    N_TRAIN = int(0.8 * BUFFER_SIZE)
-    N_VALIDATION = int(0.2 * BUFFER_SIZE)
+    BATCH_SIZE = 8
+    N_TRAIN = int(0.9 * BUFFER_SIZE)
+    N_VALIDATION = int(0.1 * BUFFER_SIZE)
     
     processed_image_ds.shuffle(BUFFER_SIZE)
     validate_ds = processed_image_ds.take(N_VALIDATION).batch(BATCH_SIZE).cache()
@@ -159,7 +154,7 @@ async def runTraining():
             FindModel,
             objective='val_accuracy',
             max_epochs=EPOCHS,
-            factor=3,
+            factor=5,
             max_consecutive_failed_trials=3,
             directory='models',
             project_name=f'my-model-{totalModel}'

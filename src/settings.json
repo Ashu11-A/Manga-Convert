@@ -8,11 +8,11 @@
         "minCompressLength": 1024
     },
     "tensorflow": {
-        "bestModel": 382
+        "bestModel": 473
     },
     "debug": {
         "request": false,
-        "memory": false,
+        "memory": true,
         "error": true,
         "any": false
     }
