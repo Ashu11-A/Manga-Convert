@@ -37,12 +37,12 @@ async def runTraining():
     if gpus:
         try:
             # Use apenas a memoria necessaria
-            # for gpu in gpus:
-            #     tf.config.experimental.set_memory_growth(gpu, True)
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
             # Limite um certa quantia de memoria
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+            # tf.config.set_logical_device_configuration(
+            #     gpus[0],
+            #     [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
             logical_gpus = tf.config.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
@@ -128,7 +128,7 @@ async def runTraining():
         print(mask.shape)
         display([sample_image, sample_mask])
         
-    EPOCHS = 10000
+    EPOCHS = 250
     BUFFER_SIZE = len(imagens)
     BATCH_SIZE = 8
     N_TRAIN = int(0.9 * BUFFER_SIZE)
@@ -154,7 +154,6 @@ async def runTraining():
             FindModel,
             objective='val_accuracy',
             max_epochs=EPOCHS,
-            factor=5,
             max_consecutive_failed_trials=3,
             directory='models',
             project_name=f'my-model-{totalModel}'

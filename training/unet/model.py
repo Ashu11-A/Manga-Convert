@@ -1,9 +1,6 @@
-import numbers
-from typing import List, Union
 import keras as keras
 from keras import layers
-from keras.regularizers import L1
-from keras.layers import Conv2D, Input, ReLU, BatchNormalization, concatenate, Dropout, Conv2DTranspose, Conv2DTranspose, MaxPooling2D
+from keras.layers import Conv2D, Input, ReLU, BatchNormalization, concatenate, Dropout, Conv2DTranspose, Conv2DTranspose
 from keras_tuner import HyperParameters
 
 def FindModel(hp: HyperParameters): 
@@ -14,11 +11,11 @@ def FindModel(hp: HyperParameters):
     activation_end = hp.Choice("activation_end", ["sigmoid"])
     pooling = hp.Choice('pooling', ['MaxPooling2D'])
     # upscale = hp.Choice('upscale', ['Conv2DTranspose'])
-    learning_rate = hp.Choice('learning_rate', values=[0.001])
+    learning_rate = hp.Choice('learning_rate', values=[0.01, 0.001, 0.0001])
     kernel_initializer: str = hp.Choice('kernel_initializer', ['he_normal']) # type: ignore
     kernel_size = hp.Choice('kernel_size', values=[3])
     dropout: int = hp.Float('dropout_rate', 0.1, 0.5, step=0.1) # type: ignore
-    filter: int = hp.Choice('filter', values=[8, 16, 32]) # type: ignore
+    filter: int = hp.Choice('filter', values=[4, 8, 16, 32]) # type: ignore
     input = Input(shape=(768, 512, 4))
     
     def down_block(x, filters: int, dropout_prob: float = 0, use_maxpool=True):
@@ -86,8 +83,8 @@ def LoaderModel():
     optimizer = 'Adam'
     learning_rate = 0.001
     kernel_size = 3
-    dropout = 0.2
-    filter = 32
+    dropout = 0.1
+    filter = 16
     activation = 'relu'
     
     kernel_initializer = 'he_normal'
