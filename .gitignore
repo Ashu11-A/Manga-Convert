@@ -17,6 +17,9 @@ pyvenv.cfg
 # Python - Linux
 bin
 lib
+lib64
+share
+include
 .vscode/settings.json
 *.js
 dist/
