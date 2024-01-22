@@ -21,7 +21,7 @@ Um simples projeto feito em Python (training) e TypeScript (proxy/tests) para re
 
 | Input                      | Output                       |
 | -------------------------- | ---------------------------- |
-| ![Input](./source/input.png) | ![Output](./source/output.png) |
+| ![Input](./.github/img/input.png) | ![Output](./.github/img/output.png) |
 
 Esse projeto usa U-Net, e foi implementado usando Tensorflow.
 
@@ -76,8 +76,8 @@ python3.10 -m venv ./
 source bin/activate
 
 pip install -r requirements.txt
-python3 -m pip install --upgrade pip setuptools wheel
-sudo pip3 install pillow --no-binary :all:
+pip install --upgrade pip setuptools wheel
+pip install pillow --no-binary :all:
 ```
 
 ### Training
@@ -87,7 +87,7 @@ sudo pip3 install pillow --no-binary :all:
 source bin/activate
 
 # Look for the best result.
-python training/start.py --best
+python training/start.py --unet --best
 
 # Run a ready-made script.
 python training/start.py --unet
@@ -100,6 +100,23 @@ pip freeze > .\requirements.txt
 ```
 
 ### Soluções de Erros
+
+##### Error code: ImportError: cannot import name 'shape_poly' from 'jax.experimental.jax2tf'
+
+Causa: Esse erro é do próprio código.
+
+Solução:
+
+```py
+# Path: lib/python3.10/site-packages/tensorflowjs/converters/jax_conversion.py
+
+# Remove:
+from jax.experimental.jax2tf import shape_poly
+PolyShape = shape_poly.PolyShape
+
+# Add:
+from jax.experimental.jax2tf import PolyShape
+```
 
 ##### Error code: Wsl/Service/CreateInstance/MountVhd/HCS/ERROR_FILE_NOT_FOUND
 
