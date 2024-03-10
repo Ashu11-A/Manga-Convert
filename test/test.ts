@@ -34,7 +34,7 @@ export async function testRun() {
     if (width === undefined || height === undefined) continue; // Skip invalid images
     // const imgResize = sharp(img).resize(512, 768)
     
-    const inputImage  = tf.node.decodeImage(img, 4)
+    const inputImage  = tf.node.decodeImage(img, 3)
     const preProcessedImage = tf.image.resizeBilinear(inputImage, [768, 512])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
     
@@ -88,6 +88,9 @@ export async function testRun() {
     .toBuffer()
     
     // Cria o diretorio para salvar as imagens
+    if (!existsSync(path.join('model-test'))) {
+      mkdirSync(path.join('model-test'));
+    }
     if (!existsSync(path.join('model-test', String(totalModel)))) {
       mkdirSync(path.join('model-test', String(totalModel)));
     }

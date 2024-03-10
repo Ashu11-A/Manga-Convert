@@ -17,9 +17,9 @@ args = parse.parse_args()
 
 def resize_images(path: str, type: str):
     image = Image.open(path)
-
     image = image.resize((512, 768), Image.LANCZOS)
     image = image.convert('RGBA')
+
     imageInvert1 = image.transpose(Image.FLIP_LEFT_RIGHT)
     imageInvert2 = image.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
     

@@ -14,7 +14,7 @@ import {
   stack,
   tidy,
 } from "@tensorflow/tfjs-node-gpu";
-import { existsSync } from "fs";
+import { existsSync, readdirSync, statSync } from "fs";
 import sizeOf from "image-size";
 import sharp from "sharp";
 import { table } from "table";
@@ -23,19 +23,26 @@ import "@tensorflow/tfjs-backend-wasm";
 const bestModel = settings.tensorflow.bestModel;
 let cachedModel: GraphModel;
 
+function getNumberOfFolders(path: string) {
+  const files = readdirSync(path);
+  const folders = files.filter((file) => statSync(path + "/" + file).isDirectory());
+  return folders.length;
+}
+
+
 export async function removeBackground(img: Buffer) {
   const memAntes = process.memoryUsage();
-  const path = `models/my-model-${bestModel}`;
-
-  if (!existsSync(path)) {
-    console.log("Pulando Tensorflow, modelo indefinido...");
-    return undefined;
+  let path: string
+  if (existsSync(`models/my-model-${bestModel}`)) {
+    path = `models/my-model-${bestModel}`
+  } else {
+    path = `models/my-model-${getNumberOfFolders('models') - 1}`
   }
 
   if (cachedModel !== undefined) {
     console.log("Modelo em cache");
   } else {
-    cachedModel = await loaderModel(bestModel);
+    cachedModel = await loaderModel(path);
   }
 
   try {
@@ -44,7 +51,7 @@ export async function removeBackground(img: Buffer) {
     // const imgResize = sharp(img).resize(512, 768)
 
     const imgTensor = tidy(() => {
-      const inputImage = node.decodeImage(img, 4);
+      const inputImage = node.decodeImage(img, 3);
       const resizedImage = image.resizeBilinear(inputImage, [768, 512]);
       const normalizedInputs = resizedImage
         .sub(resizedImage.min())
@@ -79,7 +86,7 @@ export async function removeBackground(img: Buffer) {
         channels: 4,
       },
     })
-      // .threshold(200)
+      // .threshold(125)
       .resize({ width, height, fit: "fill" })
       .png()
       .toBuffer();

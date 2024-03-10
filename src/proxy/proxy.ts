@@ -4,7 +4,7 @@ import { copyHeaders } from "./copyHeaders";
 import { redirect } from "./redirects";
 import { compress } from "../compress/compress";
 import https from "https";
-import { pick, unset } from "lodash";
+import { pick } from "lodash";
 import { removeBackground } from "@/tensorflow/processImg";
 import sharp from "sharp";
 import settings from "@/settings.json";
@@ -29,6 +29,7 @@ export async function proxy(req: Request, res: Response) {
           : "muito grande"
       }`
     );
+    console.log(range, width, height)
     return redirect(req, res);
   }
 
