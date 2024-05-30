@@ -32,10 +32,10 @@ export async function testRun() {
   for (const [currentImage, img] of imagens.entries()) {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) continue; // Skip invalid images
-    // const imgResize = sharp(img).resize(512, 768)
+    // const imgResize = sharp(img).resize(320, 512)
     
     const inputImage  = tf.node.decodeImage(img, 3)
-    const preProcessedImage = tf.image.resizeBilinear(inputImage, [768, 512])
+    const preProcessedImage = tf.image.resizeBilinear(inputImage, [512 ,320])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
     
     const normalizedInputs = tf.tidy(() => {

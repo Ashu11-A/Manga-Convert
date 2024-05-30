@@ -17,7 +17,7 @@ args = parse.parse_args()
 
 def resize_images(path: str, type: str):
     image = Image.open(path)
-    image = image.resize((512, 768), Image.LANCZOS)
+    image = image.resize((320, 512), Image.LANCZOS)
     image = image.convert('RGBA')
 
     imageInvert1 = image.transpose(Image.FLIP_LEFT_RIGHT)
@@ -59,7 +59,7 @@ def resize_images(path: str, type: str):
         imageInvert2.save(f"{dirName}/{fileName}")
         
 
-path = "dados/treino/train"
+path = "dados/train"
 loader = DataLoader()
 
 async def processFiles():

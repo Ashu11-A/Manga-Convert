@@ -34,7 +34,7 @@ export async function runTraining() {
   // <-- Cria o modelo -->
   const model = sequential({
     layers: [
-      layers.inputLayer({ inputShape: [768, 512, 4]}),
+      layers.inputLayer({ inputShape: [512 ,320, 4]}),
       layers.dropout({ rate: 0.1 }),
       layers.dense({
         units: 64,
@@ -91,6 +91,6 @@ export async function runTraining() {
     );
   })
 
-  const prediction = model.predict(randomNormal([1, 768, 512, 4]));
+  const prediction = model.predict(randomNormal([1, 512 ,320, 4]));
   (prediction as Tensor).print();
 }

@@ -13,13 +13,13 @@ class TensorLoader:
         img = tf.io.read_file(image_path)
         img = tf.image.decode_png(img, channels=3) # type: ignore
         img = tf.cast(img, tf.float32) / tf.constant(255, dtype=tf.float32)
-        img = tf.image.resize(img, (768, 512), method='nearest')
+        img = tf.image.resize(img, (512, 320), method='nearest')
 
         mask = tf.io.read_file(mask_path)
         mask = tf.image.decode_png(mask, channels=4) # type: ignore
         mask = tf.cast(mask, tf.float32) / tf.constant(255, dtype=tf.float32)
         # mask = tf.math.reduce_max(mask, axis=-1, keepdims=True)
-        mask = tf.image.resize(mask, (768, 512), method='nearest')
+        mask = tf.image.resize(mask, (512, 320), method='nearest')
         return img, mask
 
         # @profile
@@ -49,7 +49,7 @@ class TensorLoader:
             # decode_input_4 = tf.cast(input_tensor, tf.float32) / 255.0 # type: ignore
             # decode_output_4 = tf.cast(output_tensor, tf.float32) / 255.0 # type: ignore
 
-            # resize_img = tf.image.resize(decode_img_1, [768, 512])
+            # resize_img = tf.image.resize(decode_img_1, [512 ,320])
             
             # normalized = tf.cast(decode_img_1, tf.float32) / 255.0 # type: ignore
             # normalized = tf.image.per_image_standardization(decode_img_1)

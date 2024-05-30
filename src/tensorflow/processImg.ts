@@ -48,11 +48,11 @@ export async function removeBackground(img: Buffer) {
   try {
     const { width, height } = sizeOf(img);
     if (width === undefined || height === undefined) return; // Skip invalid images
-    // const imgResize = sharp(img).resize(512, 768)
+    // const imgResize = sharp(img).resize(320, 512)
 
     const imgTensor = tidy(() => {
       const inputImage = node.decodeImage(img, 3);
-      const resizedImage = image.resizeBilinear(inputImage, [768, 512]);
+      const resizedImage = image.resizeBilinear(inputImage, [512 ,320]);
       const normalizedInputs = resizedImage
         .sub(resizedImage.min())
         .div(resizedImage.max().sub(resizedImage.min()));
@@ -62,7 +62,7 @@ export async function removeBackground(img: Buffer) {
 
     const predict = async (input: Tensor<Rank>) => {
       setBackend("tensorflow");
-      const output = (await cachedModel.execute(input)) as Tensor3D;
+      const output = cachedModel.execute(input) as Tensor3D;
       return output;
     };
 
