@@ -44,7 +44,7 @@ async def runTraining():
             # Limite um certa quantia de memoria
             tf.config.set_logical_device_configuration(
                 gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=7168)])
+                [tf.config.LogicalDeviceConfiguration(memory_limit=6144)])
             logical_gpus = tf.config.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
         except RuntimeError as e:
@@ -74,7 +74,7 @@ async def runTraining():
     tf.profiler.experimental.Profile(logdir=logs)
 
     # Loader Files
-    markDir = 'dados_cache/treino/train'
+    markDir = 'dados_cache/train'
     loaderFiles = DataLoader()
     loaderTensor = TensorLoader()
 
@@ -108,9 +108,9 @@ async def runTraining():
         
     EPOCHS = 250
     BUFFER_SIZE = len(imagens)
-    BATCH_SIZE = 8
-    N_TRAIN = int(0.9 * BUFFER_SIZE)
-    N_VALIDATION = int(0.1 * BUFFER_SIZE)
+    BATCH_SIZE = 32
+    N_TRAIN = int(0.7 * BUFFER_SIZE)
+    N_VALIDATION = int(0.3 * BUFFER_SIZE)
     
     dataset = dataset.cache().shuffle(BUFFER_SIZE).repeat()
     validate_ds = dataset.take(N_VALIDATION).batch(BATCH_SIZE).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -136,7 +136,7 @@ async def runTraining():
         
         tuner = kt.Hyperband(
             FindModel,
-            objective='val_loss',
+            objective='val_accuracy',
             max_epochs=EPOCHS,
             max_consecutive_failed_trials=3,
             directory='models',
@@ -146,7 +146,7 @@ async def runTraining():
             train_ds,
             validation_data=validate_ds,
             callbacks=[
-                EarlyStopping(monitor='val_loss', patience=25, verbose=1),
+                EarlyStopping(monitor='val_accuracy', patience=25, verbose=1),
                 TensorBoard(log_dir=logs, histogram_freq=1, profile_batch=2),
                 TerminateOnNaN(),
                 ReduceLROnPlateau(factor=0.1, patience=5, min_lr=0.00001, verbose=1), # type: ignore
@@ -195,8 +195,8 @@ async def runTraining():
         epochs=EPOCHS,
         batch_size=1,
         callbacks=[
-            ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_loss', save_best_only=True, mode='auto', verbose=1),
-            EarlyStopping(monitor='val_loss', patience=20, verbose=1),
+            ModelCheckpoint(f'models/my-model-{totalModel}/best_model', monitor='val_accuracy', save_best_only=True, mode='auto', verbose=1),
+            EarlyStopping(monitor='val_accuracy', patience=20, verbose=1),
             TensorBoard(log_dir=logs, histogram_freq=1, embeddings_freq=1),
             TerminateOnNaN(),
             ReduceLROnPlateau(factor=0.1, patience=5, min_lr=0.00001, verbose=1), # type: ignore
