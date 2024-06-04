@@ -1,7 +1,4 @@
-import argparse
-import asyncio
 import os
-
 import matplotlib.pyplot as plt
 from datetime import datetime
 import json
@@ -15,25 +12,12 @@ import keras_tuner as kt
 import keras
 
 from unet.model import FindModel, LoaderModel
-from functions.getData import DataLoader
+from unet.functions.getData import DataLoader
 from unet.tensor import TensorLoader
 from IPython.display import clear_output
 
 
-async def runTraining():
-    # Starting
-    parser = argparse.ArgumentParser(description='Treinamento de modelo')
-    parser.add_argument('--best', action='store_true', help='Se o treinamento deve achar o melhor resultado')
-    parser.add_argument('--model', type=str, help='Modelo')
-    parser.add_argument(
-        "--unet",
-        action="store_const",
-        const=None,
-        default=None,
-        help="Use U-Net architecture",
-    )
-    args = parser.parse_args()
-
+async def unetTraining(args: list[str], model: int | None):
     # Aumentar artificalmente a memoria vRam da GPU
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
@@ -131,7 +115,7 @@ async def runTraining():
         if model is None:
             print('Não existe um checkpoint!')
             return
-    elif args.best:
+    elif 'best' in args:
         print('Iniciando procura do melhor modelo!')
         
         tuner = kt.Hyperband(
@@ -245,5 +229,3 @@ async def runTraining():
     print('Best epoch: %d' % (best_epoch))
         
     print(f'Modelo salvo: {datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")}')
-
-asyncio.run(runTraining())

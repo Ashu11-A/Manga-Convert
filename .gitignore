@@ -23,3 +23,10 @@ include
 .vscode/settings.json
 *.js
 dist/
+
+# Yolo
+*.pt
+*.npy
+runs/
+output/
+coco-seg/

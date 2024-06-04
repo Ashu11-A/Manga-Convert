@@ -1,12 +1,10 @@
 import os
-from pickle import TRUE
 import numpy as np
 from PIL import Image
-from functions.getData import DataLoader
+from unet.functions.getData import DataLoader
 import asyncio
 from tqdm import tqdm
 import argparse
-import io
 import cv2
 
 parse = argparse.ArgumentParser(description="Converter Imagens antes do treinamento")

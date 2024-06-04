@@ -1,26 +1,26 @@
 import { convertSize } from "@/functions/formatBytes";
-import { loaderModel } from "./loader";
 import settings from "@/settings.json";
+import "@tensorflow/tfjs-backend-wasm";
 import {
   GraphModel,
   Rank,
   Tensor,
   Tensor3D,
   browser,
-  engine,
   image,
   node,
   setBackend,
   stack,
-  tidy,
+  tidy
 } from "@tensorflow/tfjs-node-gpu";
 import { existsSync, readdirSync, statSync } from "fs";
 import sizeOf from "image-size";
 import sharp from "sharp";
 import { table } from "table";
-import "@tensorflow/tfjs-backend-wasm";
+import { loaderModel } from "./loader";
 
 const bestModel = settings.tensorflow.bestModel;
+const mode = settings.model
 let cachedModel: GraphModel;
 
 function getNumberOfFolders(path: string) {
@@ -30,24 +30,20 @@ function getNumberOfFolders(path: string) {
 }
 
 
-export async function removeBackground(img: Buffer) {
+export async function removeBackground(img: Buffer): Promise<Buffer> {
   const memAntes = process.memoryUsage();
-  let path: string
-  if (existsSync(`models/my-model-${bestModel}`)) {
-    path = `models/my-model-${bestModel}`
+  let path = mode === 'unet' ? 'models/my-model-' : 'runs/segment/train'
+  if (existsSync(`${path}${bestModel}`)) {
+    path = `${path}${bestModel}`
   } else {
-    path = `models/my-model-${getNumberOfFolders('models') - 1}`
+    path = `${path}${getNumberOfFolders('models') - 1}`
   }
 
-  if (cachedModel !== undefined) {
-    console.log("Modelo em cache");
-  } else {
-    cachedModel = await loaderModel(path);
-  }
+  if (cachedModel === undefined) cachedModel = await loaderModel(path)
 
   try {
     const { width, height } = sizeOf(img);
-    if (width === undefined || height === undefined) return; // Skip invalid images
+    if (width === undefined || height === undefined) return img; // Skip invalid images
     // const imgResize = sharp(img).resize(320, 512)
 
     const imgTensor = tidy(() => {
@@ -160,6 +156,6 @@ export async function removeBackground(img: Buffer) {
       console.log("Erro ao processar imagens no Tensorflow");
       console.log(err);
     }
-    return;
+    return img
   }
 }

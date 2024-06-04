@@ -25,10 +25,10 @@ export function convertToTensor(options: {
 
     // <-- Faz o redimencionamento da imagens -->
     const inputResized = inputs.map((img) => {
-        return node.decodeImage(img).resizeBilinear([512 ,320])
+      return node.decodeImage(img).resizeBilinear([1280, 1280])
     })
     const labelResized = labels.map((img) => {
-        return node.decodeImage(img).resizeBilinear([512 ,320])
+      return node.decodeImage(img).resizeBilinear([1280, 1280])
     })
 
     let inputTensor = stack(inputResized);

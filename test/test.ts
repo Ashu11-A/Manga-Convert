@@ -1,11 +1,11 @@
 import { loadGraphModel } from "@tensorflow/tfjs-converter";
 import * as tf from "@tensorflow/tfjs-node"; // Import everything for convenience
-import { existsSync, mkdir, mkdirSync, writeFile } from "fs";
+import { existsSync, mkdirSync, writeFile } from "fs";
 import sizeOf from "image-size";
-import sharp from "sharp";
-import { FilesLoader } from "./model/getData";
 import path from 'path';
-import { table } from 'table'
+import sharp from "sharp";
+import { table } from 'table';
+import { FilesLoader } from "./model/getData";
 
 sharp.cache(false)
 sharp.concurrency(4)
@@ -35,7 +35,7 @@ export async function testRun() {
     // const imgResize = sharp(img).resize(320, 512)
     
     const inputImage  = tf.node.decodeImage(img, 3)
-    const preProcessedImage = tf.image.resizeBilinear(inputImage, [512 ,320])
+    const preProcessedImage = tf.image.resizeBilinear(inputImage, [1280, 1280])
     const inputTensor = preProcessedImage.toFloat(); // Use toFloat() for type conversion
     
     const normalizedInputs = tf.tidy(() => {
@@ -83,9 +83,9 @@ export async function testRun() {
       },
     })
     // .threshold(200)
-    .resize({ width, height, fit: 'fill' })
-    .png()
-    .toBuffer()
+      .resize({ width, height, fit: 'fill' })
+      .png()
+      .toBuffer()
     
     // Cria o diretorio para salvar as imagens
     if (!existsSync(path.join('model-test'))) {
@@ -97,10 +97,10 @@ export async function testRun() {
 
     // Aplica a mascara
     await sharp(image)
-    .composite([{ input: mask, blend: "dest-in", gravity: "northwest" }])
-    .png()
-    .toFile(`model-test/${totalModel}/prediction-${currentImage}-test.png`)
-    
+      .composite([{ input: mask, blend: "dest-in", gravity: "northwest" }])
+      .png()
+      .toFile(`model-test/${totalModel}/prediction-${currentImage}-test.png`)
+
     writeFile(`model-test/${totalModel}/prediction-${currentImage}-train.png`, img, (err) => {
       if (err) console.error(err)
     });

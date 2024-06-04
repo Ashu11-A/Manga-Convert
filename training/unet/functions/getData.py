@@ -65,12 +65,3 @@ class DataLoader:
         else:
             scan_directory(markDir)
             return images
-
-    def countFolders(self, directory: str) -> int:
-        count = 0
-        if not os.path.exists(directory):
-            os.mkdir(directory)
-        for entry in os.scandir(directory):
-            if entry.is_dir(follow_symlinks=False):
-                count += 1
-        return count

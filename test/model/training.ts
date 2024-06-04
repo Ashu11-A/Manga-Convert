@@ -1,5 +1,4 @@
 import {
-  CallbackList,
   Tensor,
   callbacks,
   layers,
@@ -7,12 +6,11 @@ import {
   metrics,
   randomNormal,
   sequential,
-  train,
+  train
 } from "@tensorflow/tfjs-node";
+import { writeFileSync } from "fs";
 import { convertToTensor } from "./convertToTensor";
 import { FilesLoader } from "./getData";
-import { UnresolvedLogs } from "@tensorflow/tfjs-layers/dist/logs";
-import { writeFileSync } from "fs";
 
 export async function runTraining() {
   const { imagens, mascaras } = await FilesLoader.carregarDados({
@@ -34,7 +32,7 @@ export async function runTraining() {
   // <-- Cria o modelo -->
   const model = sequential({
     layers: [
-      layers.inputLayer({ inputShape: [512 ,320, 4]}),
+      layers.inputLayer({ inputShape: [1280, 1280, 4]}),
       layers.dropout({ rate: 0.1 }),
       layers.dense({
         units: 64,
@@ -91,6 +89,6 @@ export async function runTraining() {
     );
   })
 
-  const prediction = model.predict(randomNormal([1, 512 ,320, 4]));
+  const prediction = model.predict(randomNormal([1, 1280, 1280, 4]));
   (prediction as Tensor).print();
 }

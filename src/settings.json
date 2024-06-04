@@ -7,6 +7,7 @@
     "compress": {
         "minCompressLength": 1024
     },
+    "model": "yolo",
     "tensorflow": {
         "bestModel": 22
     },

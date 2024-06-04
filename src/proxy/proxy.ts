@@ -13,11 +13,10 @@ import { shouldCompress } from "@/compress/shouldCompress";
 import { send } from "./send";
 
 export async function proxy(req: Request, res: Response) {
-  const { width, height, length } = await probe(req.params.url, {
-    rejectUnauthorized: false,
-  }).catch(() => {
-    return { width: 1, height: 1, length: 0 };
-  });
+  const { width, height, length } = await probe(req.params.url, { rejectUnauthorized: false })
+    .catch(() => {
+      return { width: 1, height: 1, length: 0 };
+    });
   const range = width / height;
   if (range <= 0.5 || range >= 0.8) {
     console.log(
@@ -25,8 +24,8 @@ export async function proxy(req: Request, res: Response) {
         range === 1
           ? "Invalida"
           : range <= 0.5
-          ? "muito pequena"
-          : "muito grande"
+            ? "muito pequena"
+            : "muito grande"
       }`
     );
     console.log(range, width, height)

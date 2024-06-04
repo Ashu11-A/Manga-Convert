@@ -6,22 +6,22 @@ interface RequestMod extends Request {
 }
 
 export function params (req: RequestMod, res: Response, next: NextFunction) {
-    let url = req.query.url
+  let url = req.query.url
 
-    if (Array.isArray(url)) url = url.join('&url=')
+  if (Array.isArray(url)) url = url.join('&url=')
 
-    if (!url || url === undefined) {
-        return res.send('bandwidth-hero-proxy').status(404)
-    }
+  if (!url || url === undefined) {
+    return res.send('bandwidth-hero-proxy').status(404)
+  }
 
-    if (!Array.isArray(url) && typeof url === 'string') {
-        url = url.replace(/http:\/\/1\.1\.\d\.\d\/bmi\/(https?:\/\/)?/i, 'http://')
+  if (!Array.isArray(url) && typeof url === 'string') {
+    url = url.replace(/http:\/\/1\.1\.\d\.\d\/bmi\/(https?:\/\/)?/i, 'http://')
 
-        req.params.url = decodeURI(url)
-        req.params.png = !req.query.jpeg;
-        req.params.grayscale = req.query.bw !== '0';
-        req.params.quality = parseInt(String(req.query.l), 10) || settings.default.quality
+    req.params.url = decodeURI(url)
+    req.params.png = !req.query.jpeg;
+    req.params.grayscale = req.query.bw !== '0';
+    req.params.quality = parseInt(String(req.query.l), 10) || settings.default.quality
 
-        next()
-    }
+    next()
+  }
 }

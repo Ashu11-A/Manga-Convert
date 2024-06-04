@@ -1,4 +1,4 @@
-import { lstat, lstatSync, readFile, readFileSync, readdir, readdirSync } from "fs";
+import { lstatSync, readFileSync, readdirSync } from "fs";
 import path from "path";
 
 export class FilesLoader {

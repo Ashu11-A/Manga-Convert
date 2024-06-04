@@ -10,8 +10,8 @@ export async function bypass(res: Response, buffer: Buffer): Promise<void> {
     res.end();
   } catch (err) {
     if (settings.debug.error === true) {
-    console.log("Erro no Bypass")
-    console.log(err)
+      console.log("Erro no Bypass")
+      console.log(err)
     }
   }
 }

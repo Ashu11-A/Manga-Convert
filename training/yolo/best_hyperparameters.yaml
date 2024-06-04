@@ -1,0 +1,30 @@
+# 100/1000 iterations complete ✅ (162693.64s)
+# Results saved to /home/ashu/Documents/GitHub/Manga-Convert/runs/segment/tune
+# Best fitness=1.87714 observed at iteration 99
+# Best fitness metrics are {'metrics/precision(B)': 0.96808, 'metrics/recall(B)': 0.9731, 'metrics/mAP50(B)': 0.97648, 'metrics/mAP50-95(B)': 0.93864, 'metrics/precision(M)': 0.96808, 'metrics/recall(M)': 0.9731, 'metrics/mAP50(M)': 0.97648, 'metrics/mAP50-95(M)': 0.93008, 'val/box_loss': 0.26253, 'val/seg_loss': 0.58824, 'val/cls_loss': 0.25748, 'val/dfl_loss': 0.98696, 'fitness': 1.87714}
+# Best fitness model is /home/ashu/Documents/GitHub/Manga-Convert/runs/segment/train99
+# Best fitness hyperparameters are printed below.
+
+lr0: 0.0104
+lrf: 0.00925
+momentum: 0.88949
+weight_decay: 0.00058
+warmup_epochs: 2.35889
+warmup_momentum: 0.79139
+box: 6.50953
+cls: 0.5306
+dfl: 1.68203
+hsv_h: 0.02139
+hsv_s: 0.62308
+hsv_v: 0.44104
+degrees: 0.0
+translate: 0.09615
+scale: 0.44839
+shear: 0.0
+perspective: 0.0
+flipud: 0.0
+fliplr: 0.59
+bgr: 0.0
+mosaic: 0.62477
+mixup: 0.0
+copy_paste: 0.0
