@@ -5,16 +5,29 @@ import {
   GraphModel,
   Rank,
   Tensor,
+  Tensor2D,
   Tensor3D,
+  Tensor4D,
   browser,
+  cast,
+  expandDims,
   image,
   node,
   setBackend,
+  slice,
+  slice3d,
   stack,
+  tensor,
+  TensorLike,
+  tensor3d,
+  tensor4d,
   tidy
 } from "@tensorflow/tfjs-node-gpu";
-import { existsSync, readdirSync, statSync } from "fs";
+import { createCanvas, ImageData, loadImage } from "canvas";
+import { existsSync } from "fs";
+import { glob } from 'glob';
 import sizeOf from "image-size";
+import { join } from "path";
 import sharp from "sharp";
 import { table } from "table";
 import { loaderModel } from "./loader";
@@ -23,12 +36,6 @@ const bestModel = settings.tensorflow.bestModel;
 const mode = settings.model
 let cachedModel: GraphModel;
 
-function getNumberOfFolders(path: string) {
-  const files = readdirSync(path);
-  const folders = files.filter((file) => statSync(path + "/" + file).isDirectory());
-  return folders.length;
-}
-
 
 export async function removeBackground(img: Buffer): Promise<Buffer> {
   const memAntes = process.memoryUsage();
@@ -36,9 +43,11 @@ export async function removeBackground(img: Buffer): Promise<Buffer> {
   if (existsSync(`${path}${bestModel}`)) {
     path = `${path}${bestModel}`
   } else {
-    path = `${path}${getNumberOfFolders('models') - 1}`
+    const dirsLength = (await glob(mode === 'unet' ? 'models/my-model-*' : 'runs/segment/train*/')).length
+    path = `${path}${dirsLength !== 1 && mode !== 'unet' ? (dirsLength - 1) : ''}`
   }
 
+  if (mode === 'yolo') path = join(path, 'weights/best_web_model')
   if (cachedModel === undefined) cachedModel = await loaderModel(path)
 
   try {
@@ -46,48 +55,55 @@ export async function removeBackground(img: Buffer): Promise<Buffer> {
     if (width === undefined || height === undefined) return img; // Skip invalid images
     // const imgResize = sharp(img).resize(320, 512)
 
-    const imgTensor = tidy(() => {
-      const inputImage = node.decodeImage(img, 3);
-      const resizedImage = image.resizeBilinear(inputImage, [512 ,320]);
-      const normalizedInputs = resizedImage
-        .sub(resizedImage.min())
-        .div(resizedImage.max().sub(resizedImage.min()));
-
-      return stack([normalizedInputs]);
-    });
-
-    const predict = async (input: Tensor<Rank>) => {
-      setBackend("tensorflow");
-      const output = cachedModel.execute(input) as Tensor3D;
-      return output;
-    };
-
-    let prediction = await predict(imgTensor);
-    prediction = prediction.squeeze([0]);
-    if (prediction.max().dataSync()[0] > 1) {
-      prediction = prediction
-        .sub(prediction.min())
-        .div(prediction.max().sub(prediction.min()));
+    const normalizeInput = (tensor: Tensor4D | Tensor3D | Tensor<Rank>) => {
+      return tensor.sub(tensor.min())
+        .div(tensor.max().sub(tensor.min()));
     }
 
-    const pixelsUint8 = await browser.toPixels(prediction as Tensor3D);
-    // const pixelsUint8 = new Uint8ClampedArray(pred3d.dataSync().map(value => Math.round(value * 255)))
+    const convertImage = await sharp(img).removeAlpha().png().toBuffer()
+
+    const decode = node.decodePng(convertImage);
+    const resized = image.resizeBilinear(decode, [1280, 1280]);
+    const input = cast(resized, 'float32')
+    const tensor4D = tensor4d(Array.from(input.dataSync()), [1, 1280, 1280, 3])
+    console.log(tensor4D.shape)
+
+    // Fazer a previsão usando o modelo TensorFlow.js
+    setBackend("tensorflow");
+    const predictionTensor = cachedModel.execute(tensor4D) as Tensor[];
+    console.log(predictionTensor)
+
+    // Obter os valores dos pixels da previsão
+    const predictionArray = predictionTensor[0].squeeze()
+    const newTensor = predictionArray.resizeBilinear([1280, 1280])
+    const output = newTensor.slice([0, 0, 0], [1280, 1280, 3])
+    //  const normalizedArray = normalizeInput(predictionArray)
+    Tensor
+
+    console.log(cachedModel.outputs)
+    console.log(newTensor)
+    console.log(output)
+
+
+
+    // const pixelsUint8 = await browser.toPixels(decodeImage as Tensor3D);
+    const encodeImage = await node.encodePng(output as Tensor3D)
+    // const imageData = new ImageData(Uint8ClampedArray.from(input.dataSync()), 100, 100);
+    // const pixelsUint8 = new Uint8ClampedArray(prediction.dataSync().map(value => Math.round(value * 255)))
     // const pixelsUint8 = pred3d.dataSync()
 
+
     // Fazer a mascara que será aplicada a imagem original
-    const mask = await sharp(pixelsUint8, {
-      raw: {
-        width: prediction.shape[1] as number,
-        height: prediction.shape[0],
-        channels: 4,
-      },
-    })
-      // .threshold(125)
+    
+    const mask = await sharp(encodeImage.buffer)
+    // .threshold(125)
       .resize({ width, height, fit: "fill" })
       .png()
-      .toBuffer();
-
+      .toBuffer()
+    await sharp(mask).toFile('mask.png')
+    
     const invertImage = await sharp(img).negate().png().toBuffer();
+    await sharp(invertImage).toFile('invertImage.png')
 
     // Aplica a mascara
     const maskedImage = await sharp(img)
@@ -96,11 +112,14 @@ export async function removeBackground(img: Buffer): Promise<Buffer> {
       ])
       .png()
       .toBuffer();
+    await sharp(invertImage).toFile('maskedImage.png')
 
     const imageProcessed = await sharp(invertImage)
       .composite([{ input: maskedImage }])
       .png()
       .toBuffer();
+    await sharp(imageProcessed).toFile('imageProcessed.png')
+    
 
     if (settings.debug.any === true) {
       console.log(
@@ -108,17 +127,17 @@ export async function removeBackground(img: Buffer): Promise<Buffer> {
           ["Size", "Shape", "dType"],
           [
             `${height},${width}`,
-            String(imgTensor.shape),
-            String(imgTensor.dtype),
+            String(output.shape),
+            String(output.dtype),
           ],
         ])
       );
     }
 
-    [mask, invertImage, maskedImage, pixelsUint8].forEach((buffer) =>
+    [mask, invertImage, maskedImage].forEach((buffer) =>
       buffer.fill(0)
     );
-    [imgTensor, prediction].forEach((tensor) =>
+    [output, newTensor, tensor4D, input, resized, decode].forEach((tensor) =>
       Array.isArray(tensor)
         ? tensor.map((tensor) => tensor.dispose())
         : tensor.dispose()

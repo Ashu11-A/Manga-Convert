@@ -1,8 +1,9 @@
+# Nodejs
+dist
 node_modules
-dados
-dados_cache*
-models
-model-test*
+
+# Dataset
+data
 logs
 
 # Python
@@ -22,7 +23,6 @@ share
 include
 .vscode/settings.json
 *.js
-dist/
 
 # Yolo
 *.pt

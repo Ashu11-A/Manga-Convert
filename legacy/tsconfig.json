@@ -27,5 +27,5 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "legacy/test"]
 }
