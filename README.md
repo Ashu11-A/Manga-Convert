@@ -72,23 +72,17 @@ If you use this dataset in a research paper, please cite it using the following 
 ## 💹 | [Production](https://github.com/Ashu11-A/Manga-Convert/tree/main/src) (only proxy)
 
 ```sh
-# Install fnm
-apt install -y curl unzip
+# Install requirements
+cd src
+python3.10 -m venv ./python
+source python/bin/activate
 
-curl -fsSL https://fnm.vercel.app/install | bash
-# rode o retorno do fnm, no meu caso:
-# export PATH="/home/ashu/.local/share/fnm:$PATH"
-eval "$(fnm env --use-on-cd)"
-fnm install
-fnm use
+pip install -r requirements.txt
 
-npm install
-
-# For ARM64
-npm rebuild @tensorflow/tfjs-node --build-from-source
+source python/bin/activate
 
 # Start
-npm run production
+python app.py
 ```
 
 ## 🐛 | [Develop](https://github.com/Ashu11-A/Manga-Convert/tree/main/training) (training)
@@ -101,19 +95,20 @@ npm run production
 
 sudo apt install nvidia-cuda-toolkit
 sudo apt install -y python3.10-venv libjpeg-dev zlib1g-dev
-python3.10 -m venv ./
-source bin/activate
-
-pip install -r requirements.txt
-pip install --upgrade pip setuptools wheel
-pip install pillow --no-binary :all:
 ```
 
 ### Training
 
 ```sh
-# Active venv
-source bin/activate
+cd training
+python3.10 -m venv ./python
+source python/bin/activate
+
+pip install -r requirements.txt
+pip install --upgrade pip setuptools wheel
+pip install pillow --no-binary :all:
+
+source python/bin/activate
 ```
 
 Yolo

@@ -16,6 +16,7 @@ Scripts
 pyvenv.cfg
 
 # Python - Linux
+python
 bin
 lib
 lib64
@@ -30,3 +31,4 @@ include
 runs/
 output/
 coco-seg/
+/models
