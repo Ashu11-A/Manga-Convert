@@ -1,9 +1,5 @@
-# Nodejs
-dist
-node_modules
-
 # Dataset
-data
+dataset
 logs
 
 # Python
