@@ -21,9 +21,9 @@ async def yoloTraining (model: None | int = None, size: int | list[int] = 1280, 
     cfg=os.path.abspath("yolo/best_hyperparameters.yaml"),
     patience=25,
     epochs=1000,
-    batch=4,
+    batch=2,
     imgsz=size,
-    rect=True, # Modo Retangular
+    # rect=True, # Modo Retangular
     # resume=True
     cache=True,
     optimizer="AdamW",
@@ -35,4 +35,4 @@ async def yoloTraining (model: None | int = None, size: int | list[int] = 1280, 
   # imgsz: Tamanho de imagem pretendido para a entrada do modelo. Pode ser um número inteiro para imagens quadradas ou uma tupla (height, width) para dimensões específicas.
   # keras: Permite exportar para o formato Keras para TensorFlow SavedModel , proporcionando compatibilidade com TensorFlow servindo e APIs.
   # int8: Ativa a quantização INT8, comprimindo ainda mais o modelo e acelerando a inferência com uma perda mínima de precisão, principalmente para dispositivos de ponta.
-  model.export(format="onnx", imgsz=size, half=True, dynamic=True)  # creates '/yolov8n_web_model'
+  model.export(format="onnx", imgsz=size, half=True)  # creates '/yolov8n_web_model'

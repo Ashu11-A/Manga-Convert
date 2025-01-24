@@ -12,11 +12,15 @@ def apply_mask(image, mask):
     # Verificar se a máscara e a imagem têm o mesmo tamanho
     if image.shape[:2] != mask.shape:
         mask = cv.resize(mask, (image.shape[1], image.shape[0]))
+        
+    bgr_image = cv.bitwise_and(image, image, mask=mask)
+    bgra_image = cv.cvtColor(bgr_image, cv.COLOR_BGR2BGRA)
+    bgra_image[:, :, 3] = mask
 
     # Aplicar a máscara à imagem (bitwise_and espera máscara binária)
-    return cv.bitwise_and(image, image, mask=mask)
+    return bgra_image
 
-async def segment_images(model_num=None):
+async def segment_images(model_num=None, image_size=1280):
     """Segmenta imagens usando o modelo YOLOv8 ou YOLOv11 padrão."""
     # Obtém o caminho do modelo
     model_path = getModel(model_num=model_num, find="weights/best.pt")
@@ -46,7 +50,19 @@ async def segment_images(model_num=None):
             continue
 
         # Realiza a previsão (segmentação)
-        results = model.predict(source=image, save=False, imgsz=1280, conf=0.5, task="segment")
+        results = model.predict(
+          source=image,
+          # device="cpu",
+          save=False,
+          imgsz=[864, 1400],
+          conf=0.5,
+          task="segment",
+          half=True,
+          # visualize=True
+          augment=True,
+          agnostic_nms=True,
+          retina_masks=True,
+        )
 
         # Processa os resultados
         for result in results:

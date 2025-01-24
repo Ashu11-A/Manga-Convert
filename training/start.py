@@ -31,7 +31,7 @@ async def run() -> None:
     if args.yolo:
         if args.test:
             if args.model:
-                await segment_images(model_num=args.model)
+                await segment_images(model_num=args.model, image_size=args.size)
         elif args.convert:
             if args.model:
                 await yoloConvert(args.model)
