@@ -20,7 +20,7 @@ To use this project in production, you need to install the [Bandwidth Hero](http
 
 This project was structured and tested with [U-Net](https://en.wikipedia.org/wiki/U-Net) and [Yolo](https://docs.ultralytics.com)(v8, v11).
 
-| Input | [YoloV8](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1)n Output | [YoloV11](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.2)s Output | Yolov8n vs Yolov11s (pink is yolov8n)
+| Input | [YoloV8](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1)n Output | [YoloV11](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.2)s Output | Yolov8n Yolov11s diff
 |--|--|--|--|
 | ![Input](./.github/img/input.png) | ![YolovV8-output](./.github/img/yolov8-output.png) | ![YoloV11-output](./.github/img/yolov11-output.png) | ![Yolov11-Yolov8-diff](./.github/img/yolov11-yolov8-diff.png)
 
