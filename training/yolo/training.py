@@ -11,7 +11,7 @@ async def yoloTraining (model: None | int = None, size: int | list[int] = 1280, 
     print(f'⚠️ Treinando modelo com base no modelo {model}, que setá em {modelPath}')
     model = YOLO(f'{modelPath}/weights/best.pt', task='segment')
   else:
-    model = YOLO("yolo11s-seg", task='segment')
+    model = YOLO("yolov8s-seg", task='segment')
 
   # https://docs.ultralytics.com/pt/usage/cfg/#train-settings
   # https://medium.com/@nainaakash012/when-does-label-smoothing-help-89654ec75326
