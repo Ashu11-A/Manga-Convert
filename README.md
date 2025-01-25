@@ -66,7 +66,8 @@ This project was structured and tested with [U-Net](https://en.wikipedia.org/wik
 | Val Seg Loss     | ❌                  | 0.7037                   | 0.65568                  | 0.69089                  |
 | Val Clas Loss    | 0.23221             | 0.26816                  | 0.31534                  | 0.27078                  |
 | Pretrained Model | ❌                  | Yolo Nano                | Yolo Small               | Yolo Small               |
-| EarlyStopping    | 26                  | 411                      | 169                      | 251                      |
+| EarlyStopping    | 20                  | 100                      | 25                       | 25                       |
+| Stop Epoch       | 26                  | 411                      | 169                      | 251                      |
 | Image Set        | 3.882               | 283                      | 480                      | 480                      |
 | Image Channels   | 4                   | 3                        | 3                        | 3                        |
 | Training Size    | 512x768             | 1280x1280                | 1400x1400                | 1400x1400                |
