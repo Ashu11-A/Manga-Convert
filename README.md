@@ -20,31 +20,63 @@ To use this project in production, you need to install the [Bandwidth Hero](http
 
 This project was structured and tested with [U-Net](https://en.wikipedia.org/wiki/U-Net) and [Yolo](https://docs.ultralytics.com)(v8, v11).
 
-| Input | [YoloV8](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1)n Output | [YoloV11](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.2)s Output | Yolov8n Yolov11s diff
+| Input | YoloV8n (v0.1) | YoloV8s (v0.2) | YoloV11s (v0.2) |
 |--|--|--|--|
-| ![Input](./.github/img/input.png) | ![YolovV8-output](./.github/img/yolov8-output.png) | ![YoloV11-output](./.github/img/yolov11-output.png) | ![Yolov11-Yolov8-diff](./.github/img/yolov11-yolov8-diff.png)
+| ![Input](./.github/img/input.png) | ![YolovV8n-output](./.github/img/yolov8n-0.1-output.png) | ![YolovV8s-output](./.github/img/yolov8s-0.2-output.png) | ![YoloV11s-output](./.github/img/yolov11s-0.2-output.png) |
+
+## Diff
+
+| Input | YoloV8n(v0.1) / YoloV8s(v0.2) | Yolov8n(v0.1) / Yolov11s(v0.2) | Yolov8s(v0.2) / Yolov11s(v0.2)
+|--|--|--|--|
+| ![Input](./.github/img/input.png) | ![YoloV8n-YoloV8s-Diff](./.github/img/yolov8n-0.1-yolov8s-0.2-diff.png) | ![Yolov11-Yolov8-Diff](./.github/img/yolov11s-0.2-yolov8n-0.1-diff.png) | ![Yolov8s-Yolov11s-Diff](./.github/img/yolov8s-0.2-yolov11s-0.2-diff.png)
 
 ## Tune
 | Model | Tuning Time | Image Size | Epochs/Inter | Iterations | Fitness | Scatter Plots |
 |--|--|--|--|--|--|--|
-| [YoloV8](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1) | 45.1h | 1280x1280 | 100 | 100 | ![yolo-tune_fitness](./.github/img/yolo-tune_fitness.png) | ![yolo-tune_scatter_plots](./.github/img/yolo-tune_scatter_plots.png) |
+| [YoloV8n](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1) (v0.1) | 45.1h | 1280x1280 | 100 | 100 | ![yolo-tune_fitness](./.github/img/yolo-tune_fitness.png) | ![yolo-tune_scatter_plots](./.github/img/yolo-tune_scatter_plots.png) |
 
-## Comparison ([Unet](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.2-beta) vs [YoloV8](https://github.com/Ashu11-A/Manga-Segment/releases/tag/v0.1) vs YoloV11)
+## Dataset versions
 
-| Property         | Unet                    | YoloV8                                        | YoloV11                                              |
-|------------------|-------------------------|-----------------------------------------------|------------------------------------------------------|
-| Val Accuracy     | 0.7444                  | Precision: 0.96808, Recall: 0.9731            | Precision: 0.96811, Recall: 0.96575                  |
-| Pretrained Model | false                   | true                                          | true                                                 |
-| Model            | None                    | Yolo Nano                                     | Yolo Small                                           |
-| EarlyStopping    | 26                      | 311                                           | 251                                                  |
-| Image Set        | 3.882                   | 283 (249 train, 22 valid, 12 test)            | 480 (420 train, 40 valid, 20 test, 4430 annotations) |
-| Image Channels   | 4                       | 3                                             | 3                                                    |
-| Training Size    | 512 x 768               | 1280 x 1280                                   | 1400 x 1400                                          |
-| Dropout          | 0.2                     | 0.0                                           | 0.0                                                  |
-| Kernel Size      | 3                       | [3](https://github.com/ultralytics/ultralytics/issues/189) | [3](https://www.youtube.com/watch?v=L9Va7Y9UT8E) |
-| Filter           | [32, 64, 128, 256, 512] | [[64, 128, 256, 512, 768]](https://github.com/ultralytics/ultralytics/issues/189) | [[64, 128, 256, 512, 1024]](https://www.youtube.com/watch?v=L9Va7Y9UT8E) |
-| Artifacts        | high                    | low                                           | low                                                  |
+| Property                  | v0.1                        | v0.2                                   |
+|---------------------------|-----------------------------|----------------------------------------|
+| Images                    | 283                         | ⬆️ 480                                 |
+| Train                     | 249                         | ⬆️ 420                                 |
+| Valid                     | 22                          | ⬆️ 40                                  |
+| Test                      | 12                          | ⬆️ 20                                  |
+| Annotations               | 3293                        | ⬆️ 4832                                |
+| Annotation comic          | 1258                        | ⬆️ 1938                                |
+| Annotation speech-balloon | 2035                        | ⬆️ 2894                                |
+| Auto-Orient               | Applied                     | Applied                                |
+| Resize                    | Stretch to 963x1400         | ⬜ Fit (white edges) in 963x1400       |
+| Auto-Adjust Contrast      | Using Contrast Stretching   | Using Contrast Stretching              |
+| Flip                      | Horizontal, Vertical        | Horizontal, Vertical                   |
+| Rotation                  | ❌                          | Between -15° and +15°                  |
+| Grayscale                 | Applied                     | Applied                                |
+| Exposure                  | ❌                          | Between -10% and +10%                  |
+| Blur                      | 0.5px                       | ⬆️ 1px                                 |
+| Noise                     | 0.5%                        | 0.5%                                   |
 
+
+## Comparison (Unet vs YoloV8 vs YoloV11)
+
+| Property         | Unet                | YoloV8 (v0.1)            | Yolov8s (v0.2)           | YoloV11 (v0.2)           |
+|------------------|---------------------|--------------------------|--------------------------|--------------------------|
+| Precision        | 0.7444              | 0.98424                  | 0.96524                  | 0.968                    |
+| Recall           | None                | 0.95234                  | 0.97068                  | 0.965                    |
+| Val Seg Loss     | None                | 0.7037                   | 0.65568                  | 0.69089                  |
+| Val Clas Loss    | 0.23221             | 0.26816                  | 0.31534                  | 0.27078                  |
+| Pretrained Model | None                | Yolo Nano                | Yolo Small               | Yolo Small               |
+| EarlyStopping    | 26                  | 411                      | 169                      | 251                      |
+| Image Set        | 3.882               | 283                      | 480                      | 480                      |
+| Image Channels   | 4                   | 3                        | 3                        | 3                        |
+| Training Size    | 512x768             | 1280x1280                | 1400x1400                | 1400x1400                |
+| Dropout          | 0.2                 | ❌                       | ❌                       | ❌                       |
+| Kernel Size      | 3                   | 3                        | 3                        | 3                        |
+| Filter           | [32,64,128,256,512] | [64,128,256,512,768]     | [64,128,256,512,768]     | [64,128,256,512,1024]    |
+| Artifacts        | high                | low                      | low                      | low                      |
+
+[Details about Yolov8](https://github.com/ultralytics/ultralytics/issues/189)
+[Details about Yolov11](https://www.youtube.com/watch?v=L9Va7Y9UT8E)
 
 ## 📝 | Cite [This Project](https://universe.roboflow.com/ashu-biqfs/manga-segment)
 If you use this dataset in a research paper, please cite it using the following BibTeX:
